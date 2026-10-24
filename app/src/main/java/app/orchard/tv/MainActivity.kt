@@ -433,6 +433,7 @@ class MainActivity : ComponentActivity() {
             LiveFilm.onHome?.goOn()
         }
         DiagLog.i("screensaver starts (${Wallpapers.screensaver})")
+        vm.screensaverSkips.reset()
         vm.screensaverVisible = true
         // Holding the screen on keeps the firmware's screensaver from starting over ours. After a
         // long stretch, let go so the TV's own power policy can still turn the panel off.
@@ -509,9 +510,9 @@ class MainActivity : ComponentActivity() {
         restartIdleTimer()
         // The key that wakes the screensaver only wakes it, silently.
         if (!vm.screensaverVisible && event.keyCode != swallowKeyUp) Sounds.onKey(event)
-        // Left / right step through the films or photos and keep the screensaver up.
+        // Directions show information; only Back exits the screensaver.
         if (vm.screensaverVisible && vm.screensaverSkips.onKey(event)) return true
-        if (vm.screensaverVisible && event.action == KeyEvent.ACTION_DOWN) {
+        if (vm.screensaverVisible && event.keyCode == KeyEvent.KEYCODE_BACK && event.action == KeyEvent.ACTION_DOWN) {
             // The key that wakes the screen only wakes it; it does not also move focus or open an app.
             hideScreensaver()
             swallowKeyUp = event.keyCode
@@ -533,10 +534,11 @@ class MainActivity : ComponentActivity() {
     override fun dispatchTouchEvent(event: MotionEvent): Boolean {
         if (locked) return super.dispatchTouchEvent(event)
         restartIdleTimer()
-        // As with keys: the touch that ends the screensaver only ends it, through to the lift.
+        if (vm.screensaverVisible) return true // Only Back exits; a stray touch cannot wake it.
+        // Swallow the rest of any touch already in progress.
         if (event.actionMasked == MotionEvent.ACTION_DOWN) {
             swallowTouch = vm.screensaverVisible
-            if (swallowTouch) hideScreensaver()
+
         }
         if (swallowTouch) {
             if (event.actionMasked == MotionEvent.ACTION_UP || event.actionMasked == MotionEvent.ACTION_CANCEL) swallowTouch = false
@@ -554,6 +556,7 @@ class MainActivity : ComponentActivity() {
             idleHandler.post { startScreensaver(asked = true) }
             return
         }
+        if (vm.screensaverVisible && (intent.hasCategory(Intent.CATEGORY_HOME) || intent.action == Intent.ACTION_MAIN)) return
         if (intent.hasCategory(Intent.CATEGORY_HOME) || intent.action == Intent.ACTION_MAIN) {
             // Since 1.11 Home Guard answers Home from an app by bringing Aerial back with this same
             // intent, so the intent alone cannot tell Home-on-Home from coming back from an app.

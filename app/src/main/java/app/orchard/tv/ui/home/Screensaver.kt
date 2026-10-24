@@ -25,6 +25,9 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.text.BasicText
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -81,8 +84,8 @@ import kotlin.random.Random
  * - Clock: a large clock over the wallpaper, moving once a minute so nothing burns in.
  * - Videos: the owner's local films, uploaded from the phone page, playing silently offline.
  *
- * If the films cannot be reached, Aerial falls back to Photos. Left and right step to the previous
- * or next film or photo, as on Apple TV; see [ScreensaverSkips].
+ * If the films cannot be reached, Aerial falls back to Photos. Directions reveal information
+ * for ten seconds without changing the film; Back exits; see [ScreensaverSkips].
  *
  * Until one is chosen the kind follows the wallpaper (Wallpapers.screensaver): aerial films with the
  * aerial wallpaper, photos with a picture, starting from that picture.
@@ -93,6 +96,16 @@ import kotlin.random.Random
  */
 @Composable
 fun Screensaver(visible: Boolean, apps: List<AppEntry>, now: LocalDateTime, skips: ScreensaverSkips, carry: SaverCarry? = null) {
+    var showInfo by remember { mutableStateOf(false) }
+    val deadline = skips.infoUntil
+    LaunchedEffect(visible, deadline) {
+        showInfo = visible && skips.infoVisible()
+        if (showInfo) {
+            delay((deadline - SystemClock.uptimeMillis()).coerceAtLeast(0L))
+            showInfo = false
+        }
+    }
+    CompositionLocalProvider(LocalSaverInfo provides showInfo) {
     AnimatedVisibility(
         visible = visible,
         enter = fadeIn(tween(1200, easing = Motion.EaseOut)),
@@ -126,26 +139,34 @@ fun Screensaver(visible: Boolean, apps: List<AppEntry>, now: LocalDateTime, skip
             }
         }
     }
+    AnimatedVisibility(visible = visible && showInfo, enter = fadeIn(tween(180)), exit = fadeOut(tween(180))) {
+        SaverInformationCard(now)
+    }
+    }
 }
 
-/**
- * Left / right on the remote while the screensaver is up. The host (MainActivity on Home,
- * AerialDream as the system screensaver) offers every key here first; keys not taken here wake.
- */
+private val LocalSaverInfo = staticCompositionLocalOf { false }
+
+/** Direction keys reveal information; only Back is offered to the host to exit. */
 class ScreensaverSkips {
+    // Retained for the player interfaces; directional input no longer changes the film.
     private val flow = MutableSharedFlow<Int>(extraBufferCapacity = 8)
     val steps: SharedFlow<Int> get() = flow
+    var infoUntil by mutableLongStateOf(0L); private set
 
-    /** True if the screensaver took [event], both its down and its up. The clock has nothing to step through. */
-    fun onKey(event: KeyEvent): Boolean {
-        val step = when (event.keyCode) {
-            KeyEvent.KEYCODE_DPAD_LEFT -> -1
-            KeyEvent.KEYCODE_DPAD_RIGHT -> 1
-            else -> return false
-        }
-        if (Wallpapers.screensaver == ScreensaverMode.Clock) return false
-        if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0) flow.tryEmit(step)
+    fun reset() { infoUntil = 0L }
+    fun infoVisible(now: Long = SystemClock.uptimeMillis()): Boolean = now < infoUntil
+
+    fun onKey(event: KeyEvent, now: Long = SystemClock.uptimeMillis()): Boolean {
+        if (event.keyCode == KeyEvent.KEYCODE_BACK) return false
+        if (event.keyCode in DIRECTIONS && event.action == KeyEvent.ACTION_DOWN) infoUntil = now + INFO_MS
         return true
+    }
+
+    companion object {
+        const val INFO_MS = 10_000L
+        private val DIRECTIONS = setOf(KeyEvent.KEYCODE_DPAD_UP, KeyEvent.KEYCODE_DPAD_DOWN,
+            KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_DPAD_RIGHT)
     }
 }
 
@@ -220,35 +241,17 @@ private fun FilmCarry(film: LiveFilm, now: LocalDateTime, steps: SharedFlow<Int>
     Labels(caption, now, showTime = false)
 }
 
-/** Place name bottom-left, time top-right: how tvOS labels its screensaver. */
+/** Localized description, without a panel or full-screen shading. */
 @Composable
 private fun Labels(caption: String?, now: LocalDateTime, showTime: Boolean = true) {
-    // Fades in where Home's own clock has moved to, as the photos cover it.
-    val time by animateFloatAsState(if (showTime) 1f else 0f, tween(2000), label = "time")
-    Box(Modifier.fillMaxSize()) {
-        Canvas(Modifier.fillMaxSize()) {
-            // Just enough shade under the text to read it over bright sky or snow.
-            drawRect(Brush.verticalGradient(0.7f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.45f)))
-            drawRect(Brush.verticalGradient(0f to Color.Black.copy(alpha = 0.3f), 0.18f to Color.Transparent))
-        }
-        if (time > 0f) BasicText(
-            timeText(now),
-            style = SaverClockStyle,
-            modifier = Modifier
-                .align(if (AerialSettings.clockRight) Alignment.TopEnd else Alignment.TopStart)
-                .padding(top = SaverClockTop, start = SaverClockSide, end = SaverClockSide)
-                .graphicsLayer { alpha = time },
-        )
-        AnimatedContent(
-            targetState = caption.orEmpty(),
-            transitionSpec = { fadeIn(tween(900)) togetherWith fadeOut(tween(600)) },
-            modifier = Modifier.align(Alignment.BottomStart).padding(start = 56.dp, bottom = 44.dp),
-            label = "caption",
-        ) { text ->
+    AnimatedVisibility(visible = LocalSaverInfo.current, enter = fadeIn(tween(180)), exit = fadeOut(tween(180))) {
+        Box(Modifier.fillMaxSize()) {
             BasicText(
-                text, maxLines = 2, overflow = TextOverflow.Ellipsis,
-                style = Type.Title.copy(color = Color.White.copy(alpha = 0.92f)),
-                modifier = Modifier.widthIn(max = 620.dp),
+                caption.orEmpty(), maxLines = 3, overflow = TextOverflow.Ellipsis,
+                style = Type.Title.copy(color = Color.White, shadow = androidx.compose.ui.graphics.Shadow(
+                    Color.Black.copy(alpha = 0.8f), androidx.compose.ui.geometry.Offset(0f, 2f), 8f)),
+                modifier = Modifier.align(Alignment.BottomStart).padding(start = 56.dp, end = 56.dp, bottom = 44.dp)
+                    .widthIn(max = 760.dp),
             )
         }
     }
@@ -529,12 +532,7 @@ private fun ClockSaver(apps: List<AppEntry>, now: LocalDateTime) {
                         drawImage(light, dstSize = IntSize(size.width.roundToInt(), size.height.roundToInt()), filterQuality = FilterQuality.Low, alpha = 0.75f)
                     }
                 }
-                Column(
-                    Modifier.offset(
-                        x = 64.dp + (w - 64.dp * 2 - 420.dp) * s.x,
-                        y = 56.dp + (h - 56.dp * 2 - 170.dp) * s.y,
-                    ),
-                ) { ShelfClock(now = now) }
+                // Information is revealed by the shared directional-key overlay.
             }
         }
     }

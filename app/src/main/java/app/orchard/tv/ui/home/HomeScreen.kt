@@ -530,7 +530,7 @@ fun HomeScreen(
                             .align(if (clockRight) Alignment.TopEnd else Alignment.TopStart)
                             .padding(horizontal = metrics.margin)
                             .padding(top = metrics.clockY)
-                            .graphicsLayer { alpha = 1f - (scroll.value / collapsePx * 1.6f).coerceIn(0f, 1f) },
+                            .graphicsLayer { alpha = (1f - (scroll.value / collapsePx * 1.6f).coerceIn(0f, 1f)) * (1f - toSaver.value) },
                         toSaver = { toSaver.value },
                     )
                 } else if (!clockRight) {
@@ -538,7 +538,7 @@ fun HomeScreen(
                         now = now,
                         modifier = Modifier
                             .padding(start = metrics.margin, top = 28.dp)
-                            .graphicsLayer { alpha = 1f - (scroll.value / collapsePx * 1.6f).coerceIn(0f, 1f) },
+                            .graphicsLayer { alpha = (1f - (scroll.value / collapsePx * 1.6f).coerceIn(0f, 1f)) * (1f - toSaver.value) },
                         toSaver = { toSaver.value },
                     )
                 }
@@ -651,7 +651,7 @@ fun HomeScreen(
                     now = now,
                     modifier = Modifier
                         .padding(end = 14.dp)
-                        .graphicsLayer { alpha = 1f - (scroll.value / collapsePx * 1.6f).coerceIn(0f, 1f) },
+                        .graphicsLayer { alpha = (1f - (scroll.value / collapsePx * 1.6f).coerceIn(0f, 1f)) * (1f - toSaver.value) },
                     toSaver = { toSaver.value },
                 )
             }

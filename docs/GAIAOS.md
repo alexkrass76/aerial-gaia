@@ -155,3 +155,13 @@ Release build and 29 tests passed. Installed over gaia.6 with the same signature
 PhoneServer now selects an IPv4 address from a physical Wi-Fi/Ethernet network instead of the default Internet network. VPN networks are excluded even when their capabilities include an underlying Wi-Fi transport. The default physical network is preferred; otherwise Ethernet takes priority. Internet validation is not required. No usable LAN IPv4 address means no phone URL, rather than a VPN-only URL.
 
 Release build and 33 tests passed. On the GaiaOS TV with WireGuard active, the displayed address and decoded QR used the Wi-Fi LAN; the exact QR URL returned HTTP 200 from a computer on that LAN. VPN settings and routing were not changed. Tested as an in-place signed update without a reboot.
+
+## Quiet screensaver and on-demand information (1.47-gaia.9)
+
+Aerial video descriptions now use Apple's Russian/Ukrainian timed metadata for all 114 catalog films (352 entries per locale). `tools/import-aerial-captions.py` reproduces the metadata from the official resources-16 archive; video files are not bundled. English/Chinese remain available, with English fallback for other locales.
+
+Screensaver information starts hidden. Any D-pad direction reveals the clock/date/weather card and the separate bottom description for 10 seconds; another direction extends that period. Direction keys no longer skip films. Back exits; other delivered keys and touch do not dismiss the screensaver. The same input policy is used by the launcher and DreamService; firmware-level power/input changes are outside its control. The home clock fades away when a live wallpaper continues into the screensaver.
+
+Clock, date and weather are drawn directly over the video with soft text shadows and no panel, border or blur. Video-plane PixelCopy was removed after both repeated and single captures produced visible green artifacts on GaiaOS. Reusing the dock's wallpaper-based glass was stable and its controls were confirmed by the owner, but the unrelated wallpaper colors were visually distracting; the owner requested the unboxed layout instead.
+
+Release build and 37 tests cover key handling, timeout/extension and metadata coverage. Installed in place with the existing signature. Owner confirmed normal video, information timeout and Back-to-home on the glass revision; ADB screenshots of the video plane contain vendor artifacts and cannot establish video quality. The owner also confirmed the final unboxed revision looks good on the TV. No reboot or system-package changes.

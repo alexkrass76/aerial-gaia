@@ -30,7 +30,7 @@ class Aerial(
     /** (second, caption) pairs: tvOS changes the place name as the camera moves on. */
     val captions: List<Pair<Int, String>>,
 ) {
-    fun captionAt(seconds: Int): String = captions.lastOrNull { it.first <= seconds }?.second ?: label
+    fun captionAt(seconds: Int): String = captions.lastOrNull { it.first <= seconds }?.second ?: captions.firstOrNull()?.second ?: label
 
     fun url(quality: AerialQuality): String = when (quality) {
         AerialQuality.DolbyVision -> dolbyVision
@@ -120,13 +120,16 @@ object Aerials {
         cache ?: load(context).also { cache = it }
     }
 
-    private fun load(context: Context): List<Aerial> {
-        val zh = Locale.getDefault().language == "zh"
+    internal fun load(context: Context, language: String = Locale.getDefault().language): List<Aerial> {
+        val zh = language == "zh"
+        val localized = if (language in setOf("ru", "uk"))
+            JSONObject(context.assets.open("aerial-captions-$language.json").bufferedReader().use { it.readText() }) else null
         val root = JSONObject(context.assets.open("aerials.json").bufferedReader().use { it.readText() })
         val arr = root.getJSONArray("videos")
         return (0 until arr.length()).map { i ->
             val o = arr.getJSONObject(i)
-            val caps = o.getJSONArray("captions")
+            val translated = localized?.optJSONArray(o.getString("id"))
+            val caps = translated ?: o.getJSONArray("captions")
             Aerial(
                 id = o.getString("id"),
                 label = o.getString("label"),
@@ -136,7 +139,7 @@ object Aerials {
                 dolbyVision = o.optString("dv").ifEmpty { o.getString("url") },
                 captions = (0 until caps.length()).map { j ->
                     val c = caps.getJSONArray(j)
-                    c.getInt(0) to (if (zh) c.getString(1) else c.getString(2)).replace(' ', ' ')
+                    c.getInt(0) to (if (translated != null || zh) c.getString(1) else c.getString(2)).replace(' ', ' ')
                 },
             )
         }

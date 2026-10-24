@@ -476,7 +476,7 @@ private fun Modifier.trimmed(top: Dp, bottom: Dp) = layout { measurable, constra
     layout(p.width, (p.height - t - bottom.roundToPx()).coerceAtLeast(0)) { p.place(0, -t) }
 }
 
-private fun conditionName(kind: WeatherKind): Int = when (kind) {
+internal fun conditionName(kind: WeatherKind): Int = when (kind) {
     WeatherKind.Clear -> R.string.weather_clear
     WeatherKind.PartlyCloudy -> R.string.weather_partly_cloudy
     WeatherKind.Cloudy -> R.string.weather_cloudy
@@ -508,7 +508,7 @@ fun CornerClock(now: LocalDateTime, modifier: Modifier = Modifier, toSaver: () -
     }
 }
 
-private fun glyphFor(w: WeatherNow): Glyph = when (w.kind) {
+internal fun glyphFor(w: WeatherNow): Glyph = when (w.kind) {
     WeatherKind.Clear -> if (w.day) Glyph.Sun else Glyph.Moon
     WeatherKind.PartlyCloudy -> if (w.day) Glyph.CloudSun else Glyph.Cloud
     WeatherKind.Cloudy -> Glyph.Cloud

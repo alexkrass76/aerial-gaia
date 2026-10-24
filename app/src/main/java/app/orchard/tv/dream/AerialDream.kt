@@ -52,8 +52,8 @@ class AerialDream : DreamService(), LifecycleOwner, SavedStateRegistryOwner {
 
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
-        // Interactive so left / right can step through the films; every other key ends the dream
-        // in dispatchKeyEvent, as a non-interactive dream would.
+        // Interactive: directions reveal information and only Back ends the dream.
+        skips.reset()
         isInteractive = true
         isFullscreen = true
         // Home's wallpaper film holds the decoder the dream's film needs (TCL MT5879).
@@ -78,7 +78,7 @@ class AerialDream : DreamService(), LifecycleOwner, SavedStateRegistryOwner {
 
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
         if (skips.onKey(event)) return true
-        if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0) {
+        if (event.keyCode == KeyEvent.KEYCODE_BACK && event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0) {
             MainActivity.dreamWokeAt = event.eventTime
             MainActivity.dreamWokeKey = event.keyCode
             DiagLog.i("dream woken by ${KeyEvent.keyCodeToString(event.keyCode)} at ${event.eventTime}")
@@ -89,6 +89,8 @@ class AerialDream : DreamService(), LifecycleOwner, SavedStateRegistryOwner {
         if (event.action == KeyEvent.ACTION_UP && !event.isCanceled && event.keyCode == MainActivity.dreamWokeKey) MainActivity.dreamWokeKey = -1
         return true
     }
+
+    override fun dispatchTouchEvent(event: android.view.MotionEvent): Boolean = true
 
     override fun onDreamingStarted() {
         super.onDreamingStarted()

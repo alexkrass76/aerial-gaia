@@ -4,7 +4,7 @@ GaiaOS / CVTE port of [Aerial by pengchujin](https://github.com/pengchujin/aeria
 
 [Russian README](README.md) · [Installation and rollback (Russian)](docs/GAIAOS.md) · [Porting notes](docs/devices/gaiaos-t950s-be30ae.md)
 
-Verified build: **1.47-gaia.8**, versionCode 58, package `app.orchard.tv.gaia`.
+Verified build: **1.47-gaia.9**, versionCode 59, package `app.orchard.tv.gaia`.
 
 - Styled, static Direct Boot card uses framework Canvas and APK resources only, waiting for unlock before opening the regular UI.
 - Upstream v1.47 updates phone settings, app/folder management, Home Guard, remote controls and screensavers.
