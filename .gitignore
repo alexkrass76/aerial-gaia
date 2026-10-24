@@ -16,3 +16,9 @@ site/install.sh
 
 # Wrangler state and the account cache (account id, e-mail).
 .wrangler/
+
+# Local signing and diagnostic artifacts
+*.keystore
+*.jks
+*.apk
+*.log

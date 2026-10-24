@@ -1,0 +1,127 @@
+# GaiaOS: установка, проверка и откат
+
+Инструкция для проверенной конфигурации LVG 32LM57 / TP.T950ST.PB752. На других устройствах сначала исследуйте компоненты и сохраните исходное состояние. Никакие команды здесь не требуют удаления APK или очистки данных. Подключение по Ethernet особенно важно: при зависании ранней загрузки Wi-Fi может не запуститься. При переходе с Wi-Fi на кабель IP может измениться — проверьте DHCP-список роутера.
+
+## 1. ADB и исходное состояние
+
+На исследованном телевизоре ADB включали в Factory Menu CVTE: удерживать Menu примерно секунду, затем быстро ← ↑ ← ↑ Back; найти ADB ENABLE и включить. Вход в меню зависит от прошивки. Не трогайте SHIPPING INIT, BOARD INIT, настройки панели и SW UPGRADE.
+
+Подставьте текущий адрес своего телевизора:
+
+```sh
+TV='TV_IP:5555'
+adb connect "$TV"
+adb devices -l
+adb -s "$TV" shell id
+adb -s "$TV" shell settings get secure enabled_accessibility_services
+adb -s "$TV" shell cmd package resolve-activity --brief -a android.intent.action.MAIN -c android.intent.category.HOME
+adb -s "$TV" shell dumpsys package com.cvte.tv.launcher.mars
+```
+
+Продолжайте только при статусе `device`. При `unauthorized` подтвердите отладку на телевизоре. Сохраните вывод локально; он может содержать персональные данные. Не публикуйте полные getprop, журналы, MAC, серийные номера или адреса сети.
+
+## 2. Установить Gaia, сохранив Mars
+
+Соберите standard release с `-Pgaia`, проверьте пакет и подпись через Android SDK apkanalyzer/apksigner. Для обновления требуется та же подпись, что у установленной Gaia.
+
+```sh
+adb -s "$TV" install -r app/build/outputs/apk/standard/release/app-standard-release.apk
+adb -s "$TV" shell cmd package compile -m speed -f app.orchard.tv.gaia
+adb -s "$TV" shell pm grant app.orchard.tv.gaia android.permission.WRITE_SECURE_SETTINGS
+adb -s "$TV" shell appops set app.orchard.tv.gaia SYSTEM_ALERT_WINDOW allow
+adb -s "$TV" shell cmd notification allow_listener app.orchard.tv.gaia/app.orchard.tv.guard.RevivalListener
+adb -s "$TV" shell am start -n app.orchard.tv.gaia/app.orchard.tv.MainActivity
+```
+
+WRITE_SECURE_SETTINGS позволяет приложению поддерживать Home Guard; уведомления используются механизмом восстановления сервиса. Сохраните исходные разрешения перед выдачей. При ошибке подписи остановитесь, не удаляйте старую Gaia.
+
+Включите Home Guard через настройки приложения. Проверьте `enabled_accessibility_services`: сервис Gaia должен присутствовать, остальные сервисы должны сохраниться. Не заменяйте весь список одной строкой. Если работает оригинальный Aerial, не оставляйте два конкурирующих Home Guard: выключите его Guard через настройки, сохранив данные.
+
+## 3. Назначить ранний HOME
+
+```sh
+adb -s "$TV" shell cmd package set-home-activity --user 0 app.orchard.tv.gaia/app.orchard.tv.DirectBootHomeActivity
+adb -s "$TV" shell am start -a android.intent.action.MAIN -c android.intent.category.HOME -c android.intent.category.COMMON_HOME
+```
+
+Если появился выбор, выберите **Aerial Gaia → Всегда**. На нашей прошивке одного set-home-activity было недостаточно для COMMON_HOME. Если Guard закрывает выбор, временно выключите только Guard Gaia, выберите «Всегда» и включите обратно. Подождите несколько секунд для сохранения.
+
+```sh
+adb -s "$TV" shell cmd package resolve-activity --brief --query-flags 524288 -a android.intent.action.MAIN -c android.intent.category.HOME -c android.intent.category.COMMON_HOME
+```
+
+Ожидаемый компонент: `app.orchard.tv.gaia/app.orchard.tv.DirectBootHomeActivity`. Не продолжайте при ResolverActivity, Mars или отсутствии результата.
+
+Сначала перезагрузите **с включённым Mars**, после отдельного согласия владельца. Не нажимайте Home до появления рабочего стола. Проверьте ранний старт по журналу, затем физические Home, стрелки, OK, Back, настройки и HDMI1 с изображением/звуком.
+
+## 4. Необязательное отключение Mars
+
+Это отдельный эксперимент, не требование для установки Aerial. Подготовьте Ethernet ADB и команды отката ниже. Сначала можно проверить `pm disable-user`; однако на исследованной прошивке это состояние сбросилось после перезагрузки. Постоянное обратимое скрытие потребовало stock userdebug `adb root`:
+
+```sh
+adb -s "$TV" root
+adb connect "$TV"
+adb -s "$TV" shell id
+```
+
+Продолжайте только при uid=0. Если root недоступен, остановитесь; не пытайтесь менять системный раздел или прошивать устройство.
+
+```sh
+adb -s "$TV" shell pm disable-user --user 0 com.cvte.tv.launcher.mars
+adb -s "$TV" shell pm hide --user 0 com.cvte.tv.launcher.mars
+adb -s "$TV" shell dumpsys package com.cvte.tv.launcher.mars
+adb -s "$TV" unroot
+adb connect "$TV"
+```
+
+Проверьте `installed=true hidden=true enabled=3` у активного пакета. APK и данные остаются на месте; Mars skin не меняйте. После согласия владельца:
+
+```sh
+adb -s "$TV" reboot
+```
+
+## 5. Приёмка после перезагрузки
+
+После возвращения Ethernet ADB:
+
+```sh
+adb connect "$TV"
+adb -s "$TV" shell getprop sys.boot_completed
+adb -s "$TV" shell getprop service.bootanim.exit
+adb -s "$TV" shell cmd package resolve-activity --brief --query-flags 524288 -a android.intent.action.MAIN -c android.intent.category.HOME -c android.intent.category.COMMON_HOME
+adb -s "$TV" shell dumpsys window | grep mCurrentFocus
+adb -s "$TV" shell dumpsys package com.cvte.tv.launcher.mars
+adb -s "$TV" shell pidof com.cvte.tv.launcher.mars
+adb -s "$TV" logcat -d -s AerialDirectBoot:I '*:S'
+```
+
+Ожидается: оба свойства равны 1; HOME — DirectBootHomeActivity; фокус — MainActivity Gaia; Mars hidden=true/ enabled=3, pidof пустой (ненулевой код выхода здесь нормален). В журнале сначала `created; userUnlocked=false`, затем `user unlocked; opening MainActivity`. Одна только видимая Gaia после нажатия Home не подтверждает правильную раннюю загрузку.
+
+Физически проверьте Home, стрелки, OK, Back, HDMI1 (звук и видео), настройки и AirPlay. На нашем устройстве эти проверки пройдены после перезагрузки без Mars. Для AirPlay сохранены `com.maxhub.screenshare.server.tv` и `com.screenshare.platform`. Не отключайте нативные TV API/settings, Bluetooth и сетевые службы ради уменьшения числа процессов.
+
+## 6. Откат при зависании загрузки
+
+Подключитесь по Ethernet. При скрытом Mars нужно **и снять скрытие, и включить пакет**:
+
+```sh
+adb connect "$TV"
+adb -s "$TV" root
+adb connect "$TV"
+adb -s "$TV" shell pm unhide --user 0 com.cvte.tv.launcher.mars
+adb -s "$TV" shell pm enable --user 0 com.cvte.tv.launcher.mars
+adb -s "$TV" shell am start -n com.cvte.tv.launcher.mars/.ui.home.HomeActivity
+adb -s "$TV" unroot
+adb connect "$TV"
+```
+
+Для полного возврата штатного Home временно выключите Guard Gaia через настройки (не затрагивая другие службы), назначьте Mars и при запросе выберите «Всегда»:
+
+```sh
+adb -s "$TV" shell cmd package set-home-activity --user 0 com.cvte.tv.launcher.mars/.ui.home.HomeActivity
+```
+
+Проверьте Home до следующей перезагрузки. Aerial и его данные можно оставить установленными. Если ADB не появляется даже по Ethernet, эти команды выполнить невозможно; не подменяйте откат случайной прошивкой от похожей платы.
+
+## Поддержка форка
+
+Сохраняйте Direct Boot Activity, COMMON_HOME, CVTE HDMI route, исключение TV-плеера в Guard и отдельный revival account при обновлении upstream. Повышайте versionCode для новых релизов и сохраняйте ключ подписи. Встроенные upstream-уведомления не означают наличие совместимой Gaia-сборки; публичный автообновлятор Gaia пока не настроен.

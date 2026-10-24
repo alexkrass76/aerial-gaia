@@ -13,6 +13,11 @@ android {
 
     defaultConfig {
         applicationId = "app.orchard.tv"
+        if (project.hasProperty("gaia")) {
+            applicationIdSuffix = ".gaia"
+            versionNameSuffix = "-gaia.3"
+        }
+        resValue("string", "revival_account_type", if (project.hasProperty("gaia")) "app.orchard.tv.gaia" else "app.orchard.tv")
         // Android 5.0. Compose 1.10 and later need 6.0, so the Compose BOM below stays on 1.9.
         minSdk = 21
         targetSdk = 34

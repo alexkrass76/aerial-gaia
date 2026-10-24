@@ -572,7 +572,9 @@ class HomeGuardService : AccessibilityService() {
         /** VIDAA's assistant and its launcher (聚好看), on the two VIDAA builds reported (issues #7, #40). */
         private val VIDAA_PACKAGES = listOf("com.hisense.vidaaassistant", "com.jamdeo.tv.vod")
         /** The apps that play the TV's inputs (SystemProbe's TCL and Xiaomi routes). */
-        private val INPUT_PLAYERS = setOf("com.tcl.tv", "com.xiaomi.mitv.tvplayer")
+        // GaiaOS/CVTE t950s_be30ae declares TV_HOME on its actual HDMI/TV screen.
+        // Treating it as a launcher interrupts input playback (observed on Android 14).
+        private val INPUT_PLAYERS = setOf("com.tcl.tv", "com.xiaomi.mitv.tvplayer", "com.cvte.tv.setting")
         /** TV services whose input switch shows the stock launcher on the way (Skyworth, #155). */
         private val SOURCE_SWITCHERS = setOf("com.tianci.tv")
         private const val VENDOR_HOME_PREFIX = "android.intent.category.HOME."

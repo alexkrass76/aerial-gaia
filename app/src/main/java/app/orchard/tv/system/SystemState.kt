@@ -404,7 +404,8 @@ object SystemProbe {
                 // which wakes it from standby as picking it in the TV's own list does; the port's
                 // only switches the picture (Sony BRAVIA XR90 with an Apple TV and a PS5, issue #259).
                 val cec = infos.firstOrNull { it.parentId == info.id }
-                val intent = (if (xiaomi) xiaomiRoute(info, kind, label, profile) else null)
+                val intent = CvteSources.route(context, info)
+                    ?: (if (xiaomi) xiaomiRoute(info, kind, label, profile) else null)
                     ?: genericRoute(cec ?: info, kind)
                 val device = cec
                     ?.let { runCatching { it.loadLabel(context).toString() }.getOrNull() }
