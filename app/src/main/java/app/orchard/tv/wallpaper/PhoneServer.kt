@@ -17,7 +17,7 @@ import app.orchard.tv.apps.SourceLooks
 import app.orchard.tv.apps.TileArtFactory
 import app.orchard.tv.settings.AerialSettings
 import app.orchard.tv.system.Diagnostics
-import app.orchard.tv.system.currentNetwork
+import app.orchard.tv.system.LanAddress
 import app.orchard.tv.settings.FocusStyle
 import app.orchard.tv.weather.Weather
 import androidx.core.graphics.createBitmap
@@ -33,7 +33,6 @@ import org.json.JSONObject
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.File
-import java.net.Inet4Address
 import java.security.SecureRandom
 
 /**
@@ -380,8 +379,7 @@ class PhoneServer private constructor(private val context: Context, private val 
 
         fun lanAddress(context: Context): String? {
             val cm = context.getSystemService<ConnectivityManager>() ?: return null
-            val props = cm.getLinkProperties(cm.currentNetwork() ?: return null) ?: return null
-            return props.linkAddresses.map { it.address }.firstOrNull { it is Inet4Address && !it.isLoopbackAddress }?.hostAddress
+            return LanAddress.find(cm)
         }
 
         /** A QR code, dark modules on white, each module [scale] pixels square. */

@@ -4,7 +4,7 @@ GaiaOS / CVTE port of [Aerial by pengchujin](https://github.com/pengchujin/aeria
 
 [Russian README](README.md) · [Installation and rollback (Russian)](docs/GAIAOS.md) · [Porting notes](docs/devices/gaiaos-t950s-be30ae.md)
 
-Verified build: **1.47-gaia.6**, versionCode 56, package `app.orchard.tv.gaia`.
+Verified build: **1.47-gaia.8**, versionCode 58, package `app.orchard.tv.gaia`.
 
 - Styled, static Direct Boot card uses framework Canvas and APK resources only, waiting for unlock before opening the regular UI.
 - Upstream v1.47 updates phone settings, app/folder management, Home Guard, remote controls and screensavers.
@@ -16,7 +16,9 @@ Verified build: **1.47-gaia.6**, versionCode 56, package `app.orchard.tv.gaia`.
 
 Verified on one LVG 32LM57 / TP.T950ST.PB752 / t950s_be30ae, Android 14, firmware 20250715_151455. On 1.41-gaia.3, on 2026-10-24 a reboot completed with Mars hidden and disabled, no Mars process. The owner confirmed HDMI1 picture/audio, physical Home and navigation buttons, and AirPlay after reboot. Other models, HDMI2–4, CEC and long-term operation without Mars are untested.
 
-For 1.47-gaia.6, the release build and 27 tests passed. Cold boot showed the styled card and opened Aerial automatically with Mars disabled. Wi-Fi connected about a minute later. Physical Home was confirmed on 1.47-gaia.5; HDMI picture/audio on 1.47 remains untested because no source device was connected.
+For 1.47-gaia.8, weather city names follow the TV language and phone settings URLs use physical Wi-Fi/Ethernet rather than VPN addresses. Release build and 33 tests passed. Russian city display and the exact QR URL returning HTTP 200 over LAN with WireGuard active were verified on the TV. Installed in place without data clearing or a reboot. Old unresolvable translated city names need to be selected again once.
+
+Previously, for 1.47-gaia.6, the release build and 27 tests passed. Cold boot showed the styled card and opened Aerial automatically with Mars disabled. Wi-Fi connected about a minute later. Physical Home was confirmed on 1.47-gaia.5; HDMI picture/audio on 1.47 remains untested because no source device was connected.
 
 This is an application, not firmware. It never automatically disables system packages. AirPlay runs in a separate receiver app and is not bundled with this launcher. The tested setup now uses io.github.jqssun.airplay with MAXHUB hidden/disabled; com.screenshare.platform remains enabled. Do not disable Mars before testing Direct Boot and establishing Ethernet ADB recovery: an earlier build stalled at Wisdom Share and Wi-Fi did not recover.
 

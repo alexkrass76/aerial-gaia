@@ -131,8 +131,24 @@ object Weather {
             prefs.edit {
                 putFloat("lat", lat); putFloat("lon", lon)
                 putString("place", zh ?: city)
+                putString("place_query", city)
+                remove("place_language")
                 putLong("located_at", System.currentTimeMillis())
             }
+        }
+        // Re-localize only the label, never move an existing weather location.
+        if (prefs.getString("place_language", null) != WeatherNames.language()) {
+            val query = prefs.getString("place_query", null) ?: prefs.getString("place", null)
+            if (!query.isNullOrBlank()) runCatching {
+                val q = URLEncoder.encode(query, "UTF-8")
+                val results = JSONObject(get("https://geocoding-api.open-meteo.com/v1/search?name=$q&count=10&language=${WeatherNames.language()}&format=json"))
+                WeatherNames.nearbyName(results, lat.toDouble(), lon.toDouble())?.let { label ->
+                    prefs.edit {
+                        putString("place", label)
+                        putString("place_language", WeatherNames.language())
+                    }
+                }
+            }.onFailure { Log.w(TAG, "could not localize weather place", it) }
         }
         val json = JSONObject(get("https://api.open-meteo.com/v1/forecast?latitude=$lat&longitude=$lon&current=temperature_2m,weather_code,is_day&daily=temperature_2m_max,temperature_2m_min&forecast_days=1&timezone=auto"))
         val current = json.getJSONObject("current")
@@ -177,7 +193,7 @@ object Weather {
                 ?.let { Triple(it.lat, it.lon, it.name) }
                 ?: runCatching {
                     val q = URLEncoder.encode(name.trim(), "UTF-8")
-                    val results = JSONObject(get("https://geocoding-api.open-meteo.com/v1/search?name=$q&count=10&language=zh&format=json"))
+                    val results = JSONObject(get("https://geocoding-api.open-meteo.com/v1/search?name=$q&count=10&language=${WeatherNames.language()}&format=json"))
                         .optJSONArray("results")
                     val all = (0 until (results?.length() ?: 0)).map { results!!.getJSONObject(it) }
                     // Towns before villages of the same name.
@@ -190,6 +206,8 @@ object Weather {
             putFloat("lon", hit.second.toFloat())
             putString("place", hit.third)
             putBoolean("chosen", true)
+            putString("place_query", name.trim())
+            putString("place_language", WeatherNames.language())
             putBoolean("checked_against_cities", true)
         }
         chosen = true

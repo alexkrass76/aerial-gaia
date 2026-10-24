@@ -143,3 +143,15 @@ Validation for 1.47-gaia.5: release build and all 25 upstream unit tests passed.
 ## Styled early screen (1.47-gaia.6)
 
 DirectBootHomeActivity now uses a framework Canvas view with an APK-backed Inter font, static teal/blue/violet gradients, a translucent rounded card and localized loading text. No Compose, wallpaper/settings reads, network requests or repeating animation are initialized. The unlock transition and HOME declarations are unchanged. Release build and 27 tests passed, including waiting for unlock and opening MainActivity once; the rendered preview was inspected. Cold boot verified on the GaiaOS TV: the owner saw the styled card, the journal recorded userUnlocked=false then the transition to MainActivity 5.66 seconds later, and Aerial was foreground without an injected Home. Mars and MAXHUB remained hidden/disabled; the AirPlay receiver advertised Aerial Gaia. The owner reported Wi-Fi reconnected automatically about a minute after startup. HDMI signal/audio remain untested on this update because no source device was connected.
+
+## Weather city localization (1.47-gaia.7)
+
+The geocoder now uses the device language instead of hard-coded Chinese. The original search query and label language are saved for future relocalization. Cached labels are updated only when the returned location is within 1 km of the saved coordinates; the migration never changes forecast coordinates. Unresolvable old translated labels must be reselected once using the phone settings page. Failed localization leaves the existing label and weather available.
+
+Release build and 29 tests passed. Installed over gaia.6 with the same signature and without clearing data; the existing chosen city was reselected through the launcher settings and returned in Russian. No system-package, VPN, wallpaper or boot changes.
+
+## Phone settings LAN address (1.47-gaia.8)
+
+PhoneServer now selects an IPv4 address from a physical Wi-Fi/Ethernet network instead of the default Internet network. VPN networks are excluded even when their capabilities include an underlying Wi-Fi transport. The default physical network is preferred; otherwise Ethernet takes priority. Internet validation is not required. No usable LAN IPv4 address means no phone URL, rather than a VPN-only URL.
+
+Release build and 33 tests passed. On the GaiaOS TV with WireGuard active, the displayed address and decoded QR used the Wi-Fi LAN; the exact QR URL returned HTTP 200 from a computer on that LAN. VPN settings and routing were not changed. Tested as an in-place signed update without a reboot.
