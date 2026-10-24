@@ -5,13 +5,10 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
 import android.os.UserManager
 import android.util.Log
-import android.view.Gravity
-import android.widget.TextView
 
 /** Minimal HOME available before CE storage unlocks. Never initializes Compose or app settings.
  * GaiaOS/CVTE needs a drawable HOME in Direct Boot to finish booting and unlock user data.
@@ -32,13 +29,7 @@ class DirectBootHomeActivity : Activity() {
         super.onCreate(savedInstanceState)
         Log.i(TAG, "created; userUnlocked=${isUnlocked()}")
         // Resources are APK-backed; no wallpaper, preferences, files, PIN or network access.
-        setContentView(TextView(this).apply {
-            text = getString(R.string.app_name)
-            textSize = 32f
-            gravity = Gravity.CENTER
-            setTextColor(Color.WHITE)
-            setBackgroundColor(Color.rgb(15, 23, 42))
-        })
+        setContentView(DirectBootView(this))
     }
 
     override fun onStart() {

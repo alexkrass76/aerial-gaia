@@ -97,7 +97,7 @@ adb -s "$TV" logcat -d -s AerialDirectBoot:I '*:S'
 
 Ожидается: оба свойства равны 1; HOME — DirectBootHomeActivity; фокус — MainActivity Gaia; Mars hidden=true/ enabled=3, pidof пустой (ненулевой код выхода здесь нормален). В журнале сначала `created; userUnlocked=false`, затем `user unlocked; opening MainActivity`. Одна только видимая Gaia после нажатия Home не подтверждает правильную раннюю загрузку.
 
-Физически проверьте Home, стрелки, OK, Back, HDMI1 (звук и видео), настройки и AirPlay. На нашем устройстве эти проверки пройдены после перезагрузки без Mars. Для AirPlay сохранены `com.maxhub.screenshare.server.tv` и `com.screenshare.platform`. Не отключайте нативные TV API/settings, Bluetooth и сетевые службы ради уменьшения числа процессов.
+Физически проверьте Home, стрелки, OK, Back, HDMI1 (звук и видео), настройки и AirPlay. На нашем устройстве эти проверки пройдены после перезагрузки без Mars. В ранних проверках AirPlay обеспечивал MAXHUB. В текущей конфигурации используется отдельный `io.github.jqssun.airplay`: MAXHUB скрыт/отключён, `com.screenshare.platform` пока оставлен включённым. Приёмник не входит в APK лаунчера. Не отключайте нативные TV API/settings, Bluetooth и сетевые службы ради уменьшения числа процессов.
 
 ## 6. Откат при зависании загрузки
 
@@ -138,4 +138,8 @@ Merged the v1.47 release (versionCode 55), including phone layout management, gu
 
 The AirPlay receiver is a separate app; updating this launcher does not replace it or change WireGuard, Wi-Fi, Mars or MAXHUB state. Boot and physical remote/input checks must be repeated for this version before treating it as fully verified.
 
-Validation for 1.47-gaia.5: release build and all 25 upstream unit tests passed. Signing certificate matches the previously installed Gaia build. Physical Home/HDMI and reboot acceptance are pending; do not interpret the older gaia.3 boot results as a test of this update.
+Validation for 1.47-gaia.5: release build and all 25 upstream unit tests passed. Signing certificate matches the previously installed Gaia build. Physical Home was subsequently confirmed; HDMI picture/audio could not be checked because no source device was connected. For reboot acceptance see 1.47-gaia.6 below.
+
+## Styled early screen (1.47-gaia.6)
+
+DirectBootHomeActivity now uses a framework Canvas view with an APK-backed Inter font, static teal/blue/violet gradients, a translucent rounded card and localized loading text. No Compose, wallpaper/settings reads, network requests or repeating animation are initialized. The unlock transition and HOME declarations are unchanged. Release build and 27 tests passed, including waiting for unlock and opening MainActivity once; the rendered preview was inspected. Cold boot verified on the GaiaOS TV: the owner saw the styled card, the journal recorded userUnlocked=false then the transition to MainActivity 5.66 seconds later, and Aerial was foreground without an injected Home. Mars and MAXHUB remained hidden/disabled; the AirPlay receiver advertised Aerial Gaia. The owner reported Wi-Fi reconnected automatically about a minute after startup. HDMI signal/audio remain untested on this update because no source device was connected.

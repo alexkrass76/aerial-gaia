@@ -6,7 +6,7 @@ Scope: LVG 32LM57, TP.T950ST.PB752, Amlogic t950s_be30ae, Android 14, 32-bit ARM
 
 Before 1.41-gaia.3, disabling `com.cvte.tv.launcher.mars` could leave the TV at Wisdom Share after the LVG logo. The captured log reported `No home screen found` for MAIN + HOME + COMMON_HOME while user storage was still locked. Home Guard correctly deferred takeover until unlock. Mars had a direct-boot-aware HOME; the old Aerial MainActivity did not.
 
-`app/src/standard/java/app/orchard/tv/DirectBootHomeActivity.kt` is a minimal framework Activity declared directBootAware in the standard manifest. It draws only an APK resource label, not Compose, preferences, wallpaper, PIN data or network content. It registers USER_UNLOCKED before checking UserManager, starts MainActivity once unlocked, and unregisters onStop to avoid pulling the user out of another app/input. MainActivity remains credential-storage-only. Do not mark the entire application directBootAware as a shortcut.
+`app/src/standard/java/app/orchard/tv/DirectBootHomeActivity.kt` is a minimal framework Activity declared directBootAware in the standard manifest. Since 1.47-gaia.6 it draws a static framework Canvas card using APK fonts and localized labels, without Compose, preferences, wallpaper, PIN data or network content. It registers USER_UNLOCKED before checking UserManager, starts MainActivity once unlocked, and unregisters onStop to avoid pulling the user out of another app/input. MainActivity remains credential-storage-only. Do not mark the entire application directBootAware as a shortcut.
 
 Successful boot sequence with Mars hidden/disabled: startup Activity logged userUnlocked=false; SurfaceFlinger reported boot finished around 19.7 seconds from boot; the Activity opened MainActivity about six seconds after its creation. sys.boot_completed=1 and service.bootanim.exit=1; no Mars process. This supports the missing Direct Boot HOME diagnosis; it is not proof that every GaiaOS firmware has no other Mars dependencies.
 
@@ -34,6 +34,8 @@ Unhiding and enabling are both required to undo this state. No APK or user data 
 
 ## Validation and limits
 
-The exact port's release build and signature verification passed. After reboot without Mars, the owner confirmed HDMI1 picture/audio, physical Home, arrows, OK, Back and AirPlay. Home Guard remained enabled. AirPlay depends on enabled `com.maxhub.screenshare.server.tv` and `com.screenshare.platform`; it is not implemented by Aerial.
+The original 1.41-gaia.3 port release build and signature verification passed. After reboot without Mars, the owner confirmed HDMI1 picture/audio, physical Home, arrows, OK, Back and AirPlay. Home Guard remained enabled. That early test used MAXHUB. The current setup uses the separate `io.github.jqssun.airplay` receiver with MAXHUB hidden/disabled; `com.screenshare.platform` remains enabled. AirPlay is not implemented or bundled by Aerial.
+
+For 1.47-gaia.6, release build and 27 tests passed. Cold boot displayed the styled card and opened MainActivity automatically with Mars still disabled. The owner reported automatic Wi-Fi connection about a minute later. Home was confirmed on 1.47-gaia.5. HDMI picture/audio on 1.47 remains untested without a connected source.
 
 Not verified: other models/firmware, HDMI2–4, CEC, long-term stability, standby/wake without Mars. No proprietary APKs or decompiled vendor code are redistributed.
