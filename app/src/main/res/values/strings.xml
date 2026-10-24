@@ -227,4 +227,12 @@
     <string name="ss_system">System</string>
     <string name="ss_system_hint">The TV\'s own screensaver, as it came with the TV (Xiaomi\'s pictures, for one). Aerial shows none of its own.</string>
     <string name="gaia_boot_loading">Starting up…</string>
+    <string name="tasks_title">Open apps</string>
+    <string name="tasks_hint">Left / Right — choose · OK — resume · Back — return</string>
+    <string name="tasks_loading">Loading…</string>
+    <string name="tasks_empty">No open apps</string>
+    <string name="tasks_unavailable">Task helper unavailable. Start it through ADB for this test.</string>
+    <string name="tasks_info">Help</string>
+    <string name="tasks_help">Left/right — select · OK — resume · ↑ — close · ↓ — help · Back — return. VPN, AirPlay and system components are protected. Background services may continue.</string>
+    <string name="tasks_close_failed">Could not close the app. Try again.</string>
 </resources>

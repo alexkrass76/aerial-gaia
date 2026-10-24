@@ -219,4 +219,12 @@
     <string name="ss_system">Жүйелік</string>
     <string name="ss_system_hint">Теледидардың өз экран сақтағышы (мысалы, Xiaomi суреттері). Aerial өзінікін көрсетпейді.</string>
     <string name="gaia_boot_loading">Жүктелуде…</string>
+    <string name="tasks_title">Ашық қолданбалар</string>
+    <string name="tasks_hint">Солға / оңға — таңдау · OK — жалғастыру · Артқа — қайту</string>
+    <string name="tasks_loading">Жүктелуде…</string>
+    <string name="tasks_empty">Ашық қолданбалар жоқ</string>
+    <string name="tasks_unavailable">Көмекші қолжетімсіз. Осы сынақ үшін оны ADB арқылы іске қосыңыз.</string>
+    <string name="tasks_info">Көмек</string>
+    <string name="tasks_help">← / → — таңдау · OK — жалғастыру · ↑ — жабу · ↓ — көмек · Back — қайту. VPN, AirPlay және жүйелік құрамдастар қорғалған. Фондық қызметтер жұмысын жалғастыруы мүмкін.</string>
+    <string name="tasks_close_failed">Қолданбаны жабу мүмкін болмады. Қайталап көріңіз.</string>
 </resources>

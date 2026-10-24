@@ -226,4 +226,12 @@
     <string name="ss_system">系统内置</string>
     <string name="ss_system_hint">用电视自带的屏保（比如小米的那些画面），Aerial 不再显示自己的屏保。</string>
     <string name="gaia_boot_loading">正在启动…</string>
+    <string name="tasks_title">已打开的应用</string>
+    <string name="tasks_hint">左 / 右 — 选择 · OK — 继续 · 返回 — 返回</string>
+    <string name="tasks_loading">正在加载…</string>
+    <string name="tasks_empty">没有打开的应用</string>
+    <string name="tasks_unavailable">任务助手不可用。请通过 ADB 启动助手以进行测试。</string>
+    <string name="tasks_info">帮助</string>
+    <string name="tasks_help">← / → 选择 · OK 继续 · ↑ 关闭 · ↓ 帮助 · Back 返回。VPN、AirPlay 和系统组件受保护。后台服务可能继续运行。</string>
+    <string name="tasks_close_failed">无法关闭应用，请重试。</string>
 </resources>

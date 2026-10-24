@@ -574,6 +574,7 @@ class MainActivity : ComponentActivity() {
     /** What onStart does once the user is unlocked; also run by a start that was locked before. */
     private fun startWork() {
         DiagLog.i("onStart")
+        app.orchard.tv.tasks.TaskBridgeBootstrap.ensure(this)
         GuardSetup.ensureEnabled(this)
         idleHandler.postDelayed({ GuardSetup.rebindIfStalled(this) }, 5_000)
         vm.reloadIfPackagesChanged()
@@ -627,6 +628,12 @@ class MainActivity : ComponentActivity() {
         restartIdleTimer()
         GuardSetup.setHomeInFront(this, true)
         HomeGuardService.onAerialResumed()
+        app.orchard.tv.tasks.TaskBridgeClient.onDoubleHome = {
+            if (packageName == "app.orchard.tv.gaia" && !vm.screensaverVisible && !isFinishing) {
+                android.util.Log.i("AerialTasks", "raw double Home; opening switcher")
+                startActivity(Intent(this, app.orchard.tv.tasks.TaskSwitcherActivity::class.java))
+            }
+        }
         Updates.onHomeResumed()
         vm.refreshSystem()
         // Back in front by any route (Home was handled in onNewIntent, which runs first; Back from
@@ -644,6 +651,7 @@ class MainActivity : ComponentActivity() {
         vm.resumed = false
         DiagLog.i("onPause")
         GuardSetup.setHomeInFront(this, false)
+        app.orchard.tv.tasks.TaskBridgeClient.onDoubleHome = null
         HomeGuardService.onAerialPaused()
         idleHandler.removeCallbacks(showScreensaver)
         hideScreensaver()

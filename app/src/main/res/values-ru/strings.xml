@@ -219,4 +219,12 @@
     <string name="ss_system">Системная</string>
     <string name="ss_system_hint">Заставка самого телевизора, как задумал производитель (например, картины Xiaomi). Aerial свою не показывает.</string>
     <string name="gaia_boot_loading">Загрузка…</string>
+    <string name="tasks_title">Открытые приложения</string>
+    <string name="tasks_hint">Влево / вправо — выбор · OK — продолжить · Назад — вернуться</string>
+    <string name="tasks_loading">Загрузка…</string>
+    <string name="tasks_empty">Нет открытых приложений</string>
+    <string name="tasks_unavailable">Помощник недоступен. Для этого теста запустите его через ADB.</string>
+    <string name="tasks_info">Подсказки</string>
+    <string name="tasks_help">← / → — выбор · OK — продолжить · ↑ — закрыть · ↓ — подсказки · Back — назад. VPN, AirPlay и системные компоненты защищены. Фоновые службы могут продолжить работу.</string>
+    <string name="tasks_close_failed">Не удалось закрыть приложение. Попробуйте ещё раз.</string>
 </resources>

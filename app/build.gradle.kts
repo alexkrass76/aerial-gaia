@@ -15,13 +15,13 @@ android {
         applicationId = "app.orchard.tv"
         if (project.hasProperty("gaia")) {
             applicationIdSuffix = ".gaia"
-            versionNameSuffix = "-gaia.9"
+            versionNameSuffix = "-gaia.10"
         }
         resValue("string", "revival_account_type", if (project.hasProperty("gaia")) "app.orchard.tv.gaia" else "app.orchard.tv")
         // Android 5.0. Compose 1.10 and later need 6.0, so the Compose BOM below stays on 1.9.
         minSdk = 21
         targetSdk = 34
-        versionCode = if (project.hasProperty("gaia")) 59 else 55
+        versionCode = if (project.hasProperty("gaia")) 60 else 55
         versionName = "1.47"
         // `./gradlew -Pdiag ...`: a build for one reporter's TV whose logcat shows no app lines;
         // see system/DiagLog.kt.
@@ -109,4 +109,25 @@ dependencies {
     // Phone setup page (a tiny LAN web server) and the QR code that opens it.
     implementation("org.nanohttpd:nanohttpd:2.3.1")
     implementation("com.google.zxing:core:3.5.3")
+}
+
+// Bundle the helper from source; never ship a developer machine's prebuilt dex.
+if (project.hasProperty("gaia")) {
+    val helperOutput = layout.buildDirectory.dir("generated/taskBridgeBuild")
+    val helperAssets = layout.buildDirectory.dir("generated/taskBridgeAssets")
+    val buildHelper = tasks.register<Exec>("buildGaiaTaskBridge") {
+        inputs.dir(rootProject.file("tools/task-bridge/src"))
+        inputs.file(rootProject.file("tools/task-bridge/build.sh"))
+        outputs.dir(helperOutput)
+        environment("JAVA_HOME", System.getProperty("java.home"))
+        environment("ANDROID_HOME", android.sdkDirectory.absolutePath)
+        commandLine("sh", rootProject.file("tools/task-bridge/build.sh").absolutePath, helperOutput.get().asFile.absolutePath)
+    }
+    val copyHelper = tasks.register<Copy>("bundleGaiaTaskBridge") {
+        dependsOn(buildHelper)
+        from(helperOutput.map { it.dir("dex") })
+        into(helperAssets.map { it.dir("task-bridge") })
+    }
+    android.sourceSets.getByName("main").assets.srcDir(helperAssets)
+    tasks.named("preBuild").configure { dependsOn(copyHelper) }
 }

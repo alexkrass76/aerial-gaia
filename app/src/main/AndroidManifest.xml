@@ -65,6 +65,14 @@
         android:largeHeap="true"
         android:networkSecurityConfig="@xml/network_security_config">
 
+        <!-- Experimental bridge: shell-only bootstrap; no change to the boot HOME contract. -->
+        <provider android:name=".tasks.TaskBridgeProvider"
+            android:authorities="${applicationId}.tasks" android:exported="true"
+            android:permission="android.permission.DUMP" />
+        <activity android:name=".tasks.TaskSwitcherActivity" android:exported="true"
+            android:permission="android.permission.DUMP" android:excludeFromRecents="true"
+            android:screenOrientation="landscape" />
+
         <!-- The HOME intent filter is added by the "standard" flavor (src/standard).
              Not in recent apps: where the firmware keeps Home for itself, Aerial's task is a standard
              one and showed as a card first in the list that switched to nothing (MiTV-MFTR0, #324). -->

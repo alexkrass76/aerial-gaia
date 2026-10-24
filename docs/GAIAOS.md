@@ -165,3 +165,28 @@ Screensaver information starts hidden. Any D-pad direction reveals the clock/dat
 Clock, date and weather are drawn directly over the video with soft text shadows and no panel, border or blur. Video-plane PixelCopy was removed after both repeated and single captures produced visible green artifacts on GaiaOS. Reusing the dock's wallpaper-based glass was stable and its controls were confirmed by the owner, but the unrelated wallpaper colors were visually distracting; the owner requested the unboxed layout instead.
 
 Release build and 37 tests cover key handling, timeout/extension and metadata coverage. Installed in place with the existing signature. Owner confirmed normal video, information timeout and Back-to-home on the glass revision; ADB screenshots of the video plane contain vendor artifacts and cannot establish video quality. The owner also confirmed the final unboxed revision looks good on the TV. No reboot or system-package changes.
+
+
+## Experimental multitasking (1.47-gaia.10)
+
+Double Home opens existing task cards; arrows choose, OK resumes and Back closes.
+A shell-UID helper observes verified Home input mappings without consuming keys.
+The launcher can start the bundled helper through loopback ADB after user unlock;
+this opt-in setting defaults off and changes no system boot scripts or ADB security
+settings. See `tools/task-bridge/README.md` for architecture and enable/status commands.
+
+Release build and 45 unit tests passed. Autonomous helper startup and recovery
+were verified, then an authorized reboot completed with Direct Boot and helper
+attachment. The owner confirmed double Home, task return and ordinary Home after
+reboot, but multitasking became available only after Wi-Fi connected. Startup
+without networking remains unverified. HDMI signal and AirPlay were not retested
+in this round. Helper plus input reader previously measured about 44 MiB PSS.
+
+To disable future automatic helper launches without changing Home or HDMI:
+
+```sh
+adb shell content call --uri content://app.orchard.tv.gaia.tasks --method set_autostart --arg false
+```
+
+This leaves a running helper alive until it is stopped or the TV reboots.
+The feature is opt-in; see the task bridge guide for setup and current limitations.

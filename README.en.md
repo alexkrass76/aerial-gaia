@@ -4,7 +4,7 @@ GaiaOS / CVTE port of [Aerial by pengchujin](https://github.com/pengchujin/aeria
 
 [Russian README](README.md) · [Installation and rollback (Russian)](docs/GAIAOS.md) · [Porting notes](docs/devices/gaiaos-t950s-be30ae.md)
 
-Verified build: **1.47-gaia.9**, versionCode 59, package `app.orchard.tv.gaia`.
+Verified build: **1.47-gaia.10**, versionCode 60, package `app.orchard.tv.gaia`.
 
 - Styled, static Direct Boot card uses framework Canvas and APK resources only, waiting for unlock before opening the regular UI.
 - Upstream v1.47 updates phone settings, app/folder management, Home Guard, remote controls and screensavers.
@@ -33,3 +33,18 @@ The `-Pgaia` flag and standard variant are required. Output: `app/build/outputs/
 Signing uses private `local/signing.properties` and a keystore in `local/`; without these upstream falls back to a machine-local debug key. Updates require the same signing key as the installed copy. Never uninstall to work around a signature mismatch if you need to preserve data.
 
 Upstream install/restore scripts, website and update notifications are **not Gaia deployment tools**. No Gaia automatic update channel is implemented. Preserve all Gaia patches and re-test boot, HOME and HDMI before adopting newer upstream code. No signing keys, household configuration, proprietary Mars APKs or raw device logs are included.
+
+## 1.47-gaia.10: experimental task switching
+
+Double Home opens dock-style task tiles over the launcher wallpaper. OK resumes,
+Up removes the selected task, and Down focuses the circular info button. The
+title and help remain hidden until info is activated. Back hides help first.
+Known core components, WireGuard and Gaia AirPlay are protected from task removal.
+This is not a force-stop of all application services.
+
+The bundled shell-UID helper supports opt-in local ADB startup after unlock,
+without root or system boot-script edits. It defaults off: see
+[setup and rollback](tools/task-bridge/README.md). Tested on the Gaia Android 14
+device above; availability followed Wi-Fi connection after reboot. Helper memory
+was approximately 44 MiB PSS. Other devices and offline startup are unverified.
+HDMI and AirPlay were not retested in this release cycle.
