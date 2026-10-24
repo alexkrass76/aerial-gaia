@@ -141,10 +141,6 @@
     <string name="st_plate_none">None</string>
     <string name="st_sounds">Sounds</string>
     <string name="st_sounds_hint">A sound as focus moves, and on select and Back, as on Apple TV.</string>
-    <string name="st_blur">Behind Panels</string>
-    <string name="st_blur_hint">How Home looks behind Control Center and folders. Live blur looks most like Apple TV, but slows older TVs.</string>
-    <string name="st_blur_frost">Frosted</string>
-    <string name="st_blur_live">Live Blur</string>
     <string name="st_sounds_tv_hint">The TV\'s own key sounds, as in its menus. Silent if key sounds are off in the TV\'s settings: choose Aerial then.</string>
     <string name="st_sounds_tv">TV</string>
     <string name="st_sounds_aerial">Aerial</string>
@@ -225,4 +221,9 @@
     <string name="notice_boot_off">%1$s will no longer open when the TV turns on</string>
     <string name="tile_stock_home">TV Home</string>
     <string name="tile_kids">Kids</string>
+    <string name="net_vpn">VPN</string>
+    <string name="ss_videos">Videos</string>
+    <string name="ss_videos_hint">Add MP4 or MOV films from the phone page. Plays offline; photos are shown when no film can play.</string>
+    <string name="ss_system">System</string>
+    <string name="ss_system_hint">The TV\'s own screensaver, as it came with the TV (Xiaomi\'s pictures, for one). Aerial shows none of its own.</string>
 </resources>

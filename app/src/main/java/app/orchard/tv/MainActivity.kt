@@ -5,7 +5,10 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.graphics.BitmapFactory
+import android.graphics.Color
 import android.graphics.drawable.BitmapDrawable
+import android.graphics.drawable.ColorDrawable
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkRequest
@@ -43,16 +46,20 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.lifecycleScope
 import app.orchard.tv.apps.AppEntry
 import app.orchard.tv.apps.CustomIcons
+import app.orchard.tv.apps.AppNames
 import app.orchard.tv.apps.SourceLooks
 import app.orchard.tv.apps.TileArtFactory
 import app.orchard.tv.guard.GuardSetup
 import app.orchard.tv.guard.HomeGuardService
 import app.orchard.tv.ui.home.HomeScreen
+import app.orchard.tv.ui.home.LiveFilm
 import app.orchard.tv.ui.theme.LocalReducedMotion
 import app.orchard.tv.ui.theme.canvasDensity
 import app.orchard.tv.settings.AerialSettings
 import app.orchard.tv.wallpaper.Wallpapers
 import app.orchard.tv.system.DiagLog
+import app.orchard.tv.wallpaper.ScreensaverMode
+import app.orchard.tv.system.SystemScreensaver
 import app.orchard.tv.system.Diagnostics
 import app.orchard.tv.system.MissingClipboard
 import app.orchard.tv.system.Sounds
@@ -77,7 +84,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private val volumeReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context, intent: Intent) = vm.refreshSystem()
+        override fun onReceive(context: Context, intent: Intent) = vm.refreshVolume()
     }
 
     /** Midnight, or the clock set at boot: a new daily photo, and the next of the rotating ones. */
@@ -103,42 +110,91 @@ class MainActivity : ComponentActivity() {
     override fun getSystemService(name: String): Any? =
         super.getSystemService(name) ?: if (name == CLIPBOARD_SERVICE) MissingClipboard.standIn else null
 
+    /**
+     * Started at power-on before the user is unlocked. Home is direct-boot aware so that it, not the
+     * firmware's launcher, is what shows then (TCL MT5879 showed its own launcher for a few
+     * seconds, PR #334). Until unlock nothing in credential storage can be read (settings, the
+     * PIN, photos, the app list), so it shows only the picture Wallpapers keeps for this and
+     * starts for real when the user is unlocked.
+     */
+    private var locked = false
+
+    private val unlocked = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) = startReal(null)
+    }
+
+    private fun showLocked() {
+        locked = true
+        DiagLog.i("onCreate before the user is unlocked; showing the kept backdrop")
+        val picture = Wallpapers.lockedBootBackdrop(this)?.takeIf { it.exists() }
+            ?.let { runCatching { BitmapFactory.decodeFile(it.path) }.getOrNull() }
+        window.setBackgroundDrawable(picture?.let { BitmapDrawable(resources, it) } ?: ColorDrawable(Color.BLACK))
+        ContextCompat.registerReceiver(this, unlocked, IntentFilter(Intent.ACTION_USER_UNLOCKED), ContextCompat.RECEIVER_EXPORTED)
+        // Unlocked between the check and the registration.
+        if (GuardSetup.isUserUnlocked(this)) startReal(null)
+    }
+
+    private var realStarted = false
+
     override fun onCreate(savedInstanceState: Bundle?) {
         DiagLog.catchCrashes()
+        if (!GuardSetup.isUserUnlocked(this)) {
+            super.onCreate(null)
+            hideSystemBars()
+            showLocked()
+            return
+        }
+        super.onCreate(savedInstanceState)
+        startReal(savedInstanceState)
+    }
+
+    /**
+     * The real start, in the window the locked instance already shows. Recreating the activity at
+     * the unlock left the screen black for the second or two the new window took: unlock 20.4 s,
+     * new window 21.9 s, first frame 22.5 s on an OPPO K9 (ColorOS TV 2.4, 2026-10-24).
+     */
+    private fun startReal(savedInstanceState: Bundle?) {
+        if (realStarted) return
+        realStarted = true
+        val fromLocked = locked
+        if (locked) {
+            locked = false
+            runCatching { unregisterReceiver(unlocked) }
+        }
         DiagLog.init(this)
         DiagLog.i("onCreate ${intent.action} restored=${savedInstanceState != null}; ${DiagLog.device()}")
-        super.onCreate(savedInstanceState)
-        WindowCompat.setDecorFitsSystemWindows(window, false)
-        WindowInsetsControllerCompat(window, window.decorView).apply {
-            hide(WindowInsetsCompat.Type.systemBars())
-            systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-        }
+        hideSystemBars()
+        // Unlocked at power-on: what the system kept. Unlocked under the locked window: nothing to
+        // restore, and this is the boot's first real start.
+        val fresh = savedInstanceState == null
         TileArtFactory.useCanvasDensity(canvasDensity(resources.displayMetrics))
         Wallpapers.init(this)
         Weather.init(this)
         Updates.init(this)
         CustomIcons.init(this)
         SourceLooks.init(this)
+        AppNames.init(this)
         AerialSettings.init(this)
         Sounds.init(this)
         val reducedMotion = Settings.Global.getFloat(contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f
 
         // The home screen paints every pixel itself; a window background would be one more
         // full-screen fill per frame for the TV's GPU. Only until Home's first frame, the backdrop
-        // baked at the last start, so the window never shows black while Compose sets up.
+        // baked at the last start, so the window never shows black while Compose sets up. Without
+        // one, keep what the window already shows (the kept backdrop of a locked start).
         val baked = Wallpapers.backdrop
-        window.setBackgroundDrawable(baked?.let { BitmapDrawable(resources, it.asAndroidBitmap()) })
-        if (baked != null) {
-            window.decorView.viewTreeObserver.addOnDrawListener(object : ViewTreeObserver.OnDrawListener {
-                override fun onDraw() {
-                    // Not from inside the draw itself.
-                    idleHandler.post {
-                        window.setBackgroundDrawable(null)
-                        window.decorView.viewTreeObserver.removeOnDrawListener(this)
-                    }
+        if (baked != null) window.setBackgroundDrawable(BitmapDrawable(resources, baked.asAndroidBitmap()))
+        // Clear whatever the window showed until the first frame (the baked backdrop, or the kept
+        // one of a locked start): from then on Home paints every pixel itself.
+        window.decorView.viewTreeObserver.addOnDrawListener(object : ViewTreeObserver.OnDrawListener {
+            override fun onDraw() {
+                // Not from inside the draw itself.
+                idleHandler.post {
+                    window.setBackgroundDrawable(null)
+                    window.decorView.viewTreeObserver.removeOnDrawListener(this)
                 }
-            })
-        }
+            }
+        })
         if (DiagLog.modeSwitch(this)) preferSmoothestRefreshRate() else DiagLog.i("refresh rate left as it is (mode_switch off)")
         if (DiagLog.softLayer(this)) window.decorView.setLayerType(View.LAYER_TYPE_SOFTWARE, null)
         logWindow()
@@ -159,7 +215,7 @@ class MainActivity : ComponentActivity() {
                     onAppInfo = { open(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", it, null)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) },
                     onUninstall = { open(Intent(Intent.ACTION_DELETE, Uri.fromParts("package", it, null)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) },
                     // Posted so the key-up of the Back press that started it does not end it at once.
-                    onStartScreensaver = { idleHandler.postDelayed({ showScreensaver.run() }, 150) },
+                    onStartScreensaver = { idleHandler.postDelayed({ startScreensaver(asked = true) }, 150) },
                 )
             }
         }
@@ -177,11 +233,28 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
-        if (savedInstanceState == null && firstStartSinceBoot()) openBootSource("boot")
+        if (fresh && firstStartSinceBoot()) openBootSource("boot")
         if (intent.getBooleanExtra(EXTRA_WOKE, false)) openBootSource("brought back on wake")
+        if (fromLocked) {
+            // This window already went through onStart and onResume while locked (both returned
+            // early) and the system will not call them again unless it stops and starts the
+            // activity: do their work for the state it is in now. Doing it unconditionally would
+            // register receivers while stopped, or mark Aerial resumed with the screen off.
+            if (lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) startWork()
+            if (lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) resumeWork()
+        }
+    }
+
+    private fun hideSystemBars() {
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        WindowInsetsControllerCompat(window, window.decorView).apply {
+            hide(WindowInsetsCompat.Type.systemBars())
+            systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        }
     }
 
     override fun onDestroy() {
+        if (locked) runCatching { unregisterReceiver(unlocked) }
         runCatching { unregisterReceiver(screenOnReceiver) }
         super.onDestroy()
     }
@@ -224,8 +297,18 @@ class MainActivity : ComponentActivity() {
         if (SystemClock.elapsedRealtime() - bootSourceOpenedAt < 15_000) return
         bootSourceOpenedAt = SystemClock.elapsedRealtime()
         lifecycleScope.launch {
+            // An app opens from its own entry at once: listing every app took 6.5 s at power-on on
+            // Xiaomi MiTV-MFTR0 once Aerial came up earlier in the boot, all of it on PatchWall's
+            // heels. Inputs and Aerial's own tiles (AppCatalog.shortcuts) only Home lists.
+            val direct = pkg?.let { p ->
+                runCatching {
+                    val launch = packageManager.getLeanbackLaunchIntentForPackage(p) ?: packageManager.getLaunchIntentForPackage(p)
+                    launch?.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED)
+                        ?.let { packageManager.getApplicationLabel(packageManager.getApplicationInfo(p, 0)).toString() to it }
+                }.getOrNull()
+            }
             // Inputs can take a while to list right after a wake (Xiaomi MiTV-MTEQ0, issue #111).
-            val intent = withTimeoutOrNull(30_000) {
+            val intent = direct ?: withTimeoutOrNull(30_000) {
                 snapshotFlow {
                     if (id != null) vm.sources.firstOrNull { it.id == id }?.let { it.label to it.intent }
                     else vm.entry(pkg!!)?.let { it.label to it.launchIntent() }
@@ -312,6 +395,7 @@ class MainActivity : ComponentActivity() {
 
     override fun dump(prefix: String, fd: java.io.FileDescriptor?, writer: java.io.PrintWriter, args: Array<out String>?) {
         super.dump(prefix, fd, writer, args)
+        if (locked) return
         // `... MainActivity report`: what tools/report.sh pastes into an issue.
         if (args?.contains("report") == true) writer.print(Diagnostics.report(this)) else DiagLog.dump(writer)
     }
@@ -319,7 +403,35 @@ class MainActivity : ComponentActivity() {
     // ---- Screensaver: Aerial's own, before the firmware's ad-carrying one can start ----
 
     private val idleHandler = Handler(Looper.getMainLooper())
-    private val showScreensaver = Runnable {
+    private val showScreensaver = Runnable { startScreensaver(asked = false) }
+
+    /**
+     * [asked]: Back, or "Start now", rather than the idle timer.
+     *
+     * Where Aerial's dream is the TV's screensaver (TCL), that dream is the one shown either way:
+     * Home's own screensaver was a second one, which the TV's timer then replaced with the dream
+     * (in its own quality), and which never held it off (TCL MT5879). With "System" chosen, Aerial
+     * starts nothing on the timer, and Back starts the firmware's.
+     */
+    private fun startScreensaver(asked: Boolean) {
+        if (Wallpapers.screensaver == ScreensaverMode.System) {
+            if (asked && !SystemScreensaver.startFirmware(this)) DiagLog.i("no system screensaver to start")
+            return
+        }
+        // Aerials over the aerial wallpaper: Home carries the wallpaper's film on, the same player in
+        // the same format, so there is no black between them; the dream would be a new player in a
+        // new window, and showed black even in 4K (TCL MT5879).
+        val carry = Wallpapers.selectedId == Wallpapers.LIVE && Wallpapers.screensaver == ScreensaverMode.Aerial
+        if (!carry && SystemScreensaver.isAerials(this)) {
+            // The dream's film needs the decoder the wallpaper's holds: TCL MT5879 failed Dolby
+            // Vision beside it and the dream fell back to 4K HEVC.
+            LiveFilm.onHome?.letDecoderGo()
+            if (SystemScreensaver.startDream(this)) {
+                DiagLog.i("screensaver starts as the system's dream")
+                return
+            }
+            LiveFilm.onHome?.goOn()
+        }
         DiagLog.i("screensaver starts (${Wallpapers.screensaver})")
         vm.screensaverVisible = true
         // Holding the screen on keeps the firmware's screensaver from starting over ours. After a
@@ -345,6 +457,12 @@ class MainActivity : ComponentActivity() {
         vm.lastInputAt = SystemClock.uptimeMillis()
         idleHandler.removeCallbacks(showScreensaver)
         if (AerialSettings.screensaverMinutes != AerialSettings.NEVER) idleHandler.postDelayed(showScreensaver, idleBeforeScreensaver())
+        // Not with "System": the firmware's screensaver is wanted then, and holding the screen on
+        // held it off (Xiaomi's starts on its own timer, screen_saver_timeout).
+        else if (Wallpapers.screensaver != ScreensaverMode.System &&
+            window.attributes.flags and WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON == 0 && screenNeverOff()) {
+            window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        }
     }
 
     /**
@@ -352,9 +470,22 @@ class MainActivity : ComponentActivity() {
      * delay in system/screen_saver_timeout: 120000 on some MiTV-MFTR0 units, 480000 on others, -1
      * when off. Start 15 s ahead of it when it is shorter than the delay chosen in Personalize.
      */
+    /**
+     * "Never" for the screensaver, on a TV whose screen itself never goes off: Home keeps the
+     * screen on, which also holds off the firmware's own screensaver. Xiaomi's HyperOS one is not
+     * the system's (screen_saver_timeout, 8 minutes on MiTV-MFTR0) and came up over Home anyway,
+     * read as the screensaver "jumping back" to Xiaomi's. Where the screen does go off, that stays.
+     */
+    private fun screenNeverOff(): Boolean =
+        runCatching { Settings.System.getLong(contentResolver, Settings.System.SCREEN_OFF_TIMEOUT) }.getOrDefault(0L) >= 24 * 60 * 60 * 1000L
+
     private fun idleBeforeScreensaver(): Long {
         val chosen = AerialSettings.screensaverMinutes * 60_000L
-        val firmware = runCatching { Settings.System.getLong(contentResolver, "screen_saver_timeout") }.getOrNull()
+        // Where Aerial's dream is the TV's screensaver, the TV starts it on its own after
+        // screen_off_timeout (TCL MT5879: 2 minutes); Home starts its own first, so that the
+        // aerial wallpaper's film can carry on (startScreensaver).
+        val dream = if (SystemScreensaver.isAerials(this)) runCatching { Settings.System.getLong(contentResolver, Settings.System.SCREEN_OFF_TIMEOUT) }.getOrNull() else null
+        val firmware = runCatching { Settings.System.getLong(contentResolver, "screen_saver_timeout") }.getOrNull()?.takeIf { it > 0 } ?: dream
         return if (firmware != null && firmware > 0) minOf(chosen, maxOf(30_000L, firmware - 15_000L))
         else chosen
     }
@@ -367,7 +498,14 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
-        if (keysLogged++ < 200) DiagLog.i("key ${KeyEvent.keyCodeToString(event.keyCode)} ${if (event.action == KeyEvent.ACTION_DOWN) "down" else "up"}, view focused ${currentFocus != null}")
+        if (locked) return super.dispatchKeyEvent(event)
+        if (event.keyCode == dreamWokeKey) {
+            DiagLog.i("key ${KeyEvent.keyCodeToString(event.keyCode)} #${event.repeatCount} is the rest of the press that woke the dream")
+            if (event.action == KeyEvent.ACTION_UP) { dreamWokeKey = -1; return true }
+            if (event.repeatCount > 0) return true
+            dreamWokeKey = -1 // a new press of the same key
+        }
+        if (keysLogged++ < 200) DiagLog.i("key ${KeyEvent.keyCodeToString(event.keyCode)} ${if (event.action == KeyEvent.ACTION_DOWN) "down" else "up"} #${event.repeatCount} at ${event.eventTime}, view focused ${currentFocus != null}")
         restartIdleTimer()
         // The key that wakes the screensaver only wakes it, silently.
         if (!vm.screensaverVisible && event.keyCode != swallowKeyUp) Sounds.onKey(event)
@@ -393,6 +531,7 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun dispatchTouchEvent(event: MotionEvent): Boolean {
+        if (locked) return super.dispatchTouchEvent(event)
         restartIdleTimer()
         // As with keys: the touch that ends the screensaver only ends it, through to the lift.
         if (event.actionMasked == MotionEvent.ACTION_DOWN) {
@@ -408,10 +547,11 @@ class MainActivity : ComponentActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        if (locked) return
         DiagLog.i("onNewIntent ${intent.action}")
         if (intent.getBooleanExtra(EXTRA_WOKE, false)) openBootSource("brought back on wake")
         if (intent.action == ACTION_PREVIEW_SCREENSAVER) {
-            idleHandler.post { showScreensaver.run() }
+            idleHandler.post { startScreensaver(asked = true) }
             return
         }
         if (intent.hasCategory(Intent.CATEGORY_HOME) || intent.action == Intent.ACTION_MAIN) {
@@ -424,6 +564,12 @@ class MainActivity : ComponentActivity() {
 
     override fun onStart() {
         super.onStart()
+        if (locked) return
+        startWork()
+    }
+
+    /** What onStart does once the user is unlocked; also run by a start that was locked before. */
+    private fun startWork() {
         DiagLog.i("onStart")
         GuardSetup.ensureEnabled(this)
         idleHandler.postDelayed({ GuardSetup.rebindIfStalled(this) }, 5_000)
@@ -467,6 +613,12 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        if (locked) return
+        resumeWork()
+    }
+
+    /** What onResume does once the user is unlocked; also run by a start that was locked before. */
+    private fun resumeWork() {
         vm.resumed = true
         DiagLog.i("onResume; screensaver after ${idleBeforeScreensaver() / 1000} s")
         restartIdleTimer()
@@ -485,15 +637,18 @@ class MainActivity : ComponentActivity() {
 
     override fun onPause() {
         super.onPause()
+        if (locked) return
         vm.resumed = false
         DiagLog.i("onPause")
         GuardSetup.setHomeInFront(this, false)
+        HomeGuardService.onAerialPaused()
         idleHandler.removeCallbacks(showScreensaver)
         hideScreensaver()
     }
 
     override fun onStop() {
         super.onStop()
+        if (locked) return
         DiagLog.i("onStop")
         unregisterReceiver(packageReceiver)
         unregisterReceiver(volumeReceiver)
@@ -562,5 +717,13 @@ class MainActivity : ComponentActivity() {
          */
         @Volatile
         var dreamWokeAt = 0L
+
+        /**
+         * The key that woke AerialDream, until its lift. The rest of that press (its repeats and its
+         * lift) comes to Home once the dream is gone; on TCL MT5879 the dream's teardown can hold
+         * the lift back long enough for Android to repeat the key, and one Down moved focus several
+         * rows. Set by AerialDream.
+         */
+        @Volatile var dreamWokeKey = -1
     }
 }

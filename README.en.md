@@ -4,7 +4,7 @@ GaiaOS / CVTE port of [Aerial by pengchujin](https://github.com/pengchujin/aeria
 
 [Russian README](README.md) · [Installation and rollback (Russian)](docs/GAIAOS.md) · [Porting notes](docs/devices/gaiaos-t950s-be30ae.md)
 
-Verified build: **1.41-gaia.3**, versionCode 44, package `app.orchard.tv.gaia`.
+Verified build: **1.47-gaia.5**, versionCode 44, package `app.orchard.tv.gaia`.
 
 - Minimal Direct Boot HOME Activity waits for user unlock before opening the regular UI.
 - HOME + CVTE COMMON_HOME categories support physical Home.

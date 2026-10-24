@@ -204,6 +204,9 @@ private fun MainPage(vm: HomeViewModel, now: LocalDateTime, takeFocus: Boolean, 
                     style = Type.Caption, maxLines = 1, overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.widthIn(max = 130.dp),
                 )
+                if (net.vpn) {
+                    BasicText(stringResource(R.string.net_vpn), style = Type.Caption)
+                }
             }
         }
 

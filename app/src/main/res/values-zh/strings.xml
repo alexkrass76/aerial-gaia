@@ -140,10 +140,6 @@
     <string name="st_plate_none">不显示</string>
     <string name="st_sounds">按键声音</string>
     <string name="st_sounds_hint">移动焦点、确认、返回时发出声音，像 Apple TV 一样。</string>
-    <string name="st_blur">面板背后</string>
-    <string name="st_blur_hint">打开控制中心和文件夹时主屏幕的样子。实时模糊最像 Apple TV，但会让较慢的电视卡顿。</string>
-    <string name="st_blur_frost">磨砂</string>
-    <string name="st_blur_live">实时模糊</string>
     <string name="st_sounds_tv_hint">用电视系统自带的按键音，和电视菜单里一样。电视设置里关了按键音时不会响，这时请选「Aerial」。</string>
     <string name="st_sounds_tv">电视</string>
     <string name="st_sounds_aerial">Aerial</string>
@@ -224,4 +220,9 @@
     <string name="notice_boot_off">开机时不再打开「%1$s」</string>
     <string name="tile_stock_home">原桌面</string>
     <string name="tile_kids">儿童</string>
+    <string name="net_vpn">VPN</string>
+    <string name="ss_videos">视频</string>
+    <string name="ss_videos_hint">扫码从手机添加 MP4 或 MOV 视频，离线轮播；没有可播放的视频时显示照片。</string>
+    <string name="ss_system">系统内置</string>
+    <string name="ss_system_hint">用电视自带的屏保（比如小米的那些画面），Aerial 不再显示自己的屏保。</string>
 </resources>

@@ -13,6 +13,8 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import app.orchard.tv.apps.AppCatalog
 import app.orchard.tv.apps.AppEntry
+import app.orchard.tv.apps.AppNames
+import app.orchard.tv.apps.LayoutOps
 import app.orchard.tv.apps.CustomIcons
 import app.orchard.tv.apps.SourceLooks
 import app.orchard.tv.apps.FOLDER_KEY_PREFIX
@@ -51,6 +53,9 @@ sealed interface Overlay {
 }
 
 enum class CcPage { Main, Inputs, InputSettings, Update, Setup }
+
+/** Time since boot at which the app list is looked at again; see HomeViewModel.catchUpAfterBoot. */
+private val BOOT_CATCH_UP_MS = listOf(60_000L, 180_000L)
 
 class HomeViewModel(app: Application) : AndroidViewModel(app) {
     private val context get() = getApplication<Application>()
@@ -94,15 +99,32 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
     var screensaverVisible by mutableStateOf(false)
     val screensaverSkips = ScreensaverSkips()
 
+    /** The phone page's arranging: the tile menu's steps, without the focus moves that go with them on the TV. */
+    // Declared before init, which hands it to AppCatalog.
+    private val layoutOps: LayoutOps = object : LayoutOps {
+        override fun move(key: String, target: String) { store.move(key, target); arrange() }
+        override fun moveInFolder(key: String, target: String) { store.moveInFolder(key, target); arrange() }
+        override fun hide(key: String) = this@HomeViewModel.hide(key)
+        override fun unhide(key: String) = this@HomeViewModel.unhide(key)
+        override fun toFolder(key: String, id: String?) { putInFolder(key, id) }
+        override fun outOfFolder(key: String) = takeOutOfFolder(key)
+        override fun ungroup(id: String) = this@HomeViewModel.ungroup(id)
+    }
+
     private var loadJob: Job? = null
 
     init {
+        AppCatalog.renameFolder = ::renameFolder
+        AppCatalog.pinSource = ::pinSourceById
+        AppCatalog.layout = layoutOps
         reload()
         // A tile picture set or removed from the phone page.
         viewModelScope.launch { snapshotFlow { CustomIcons.version }.drop(1).collect { reload() } }
         offerSetupOnce()
         // An input's device or name, chosen from its tile's menu or the phone page.
         viewModelScope.launch { snapshotFlow { SourceLooks.all }.drop(1).collect { if (loaded) arrange() } }
+        // An app renamed on the phone page.
+        viewModelScope.launch { snapshotFlow { AppNames.all }.drop(1).collect { if (loaded) arrange() } }
     }
 
     /**
@@ -150,8 +172,33 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
             DiagLog.i("${all.size} apps in ${SystemClock.uptimeMillis() - started} ms")
             sources = withContext(Dispatchers.Default) { SystemProbe.sources(ctx) }
             arrange()
-            if (!loaded) DiagLog.i("Home loaded: ${apps.size} tiles, ${sources.size} inputs, ${SystemClock.uptimeMillis() - started} ms")
+            if (!loaded) {
+                DiagLog.i("Home loaded: ${apps.size} tiles, ${sources.size} inputs, ${SystemClock.uptimeMillis() - started} ms")
+                catchUpAfterBoot()
+            }
             loaded = true
+        }
+    }
+
+    /**
+     * Taking over early in a boot, Aerial can list the apps before the system has registered them
+     * all, and apps that were already installed send no broadcast later: the missing ones stayed
+     * missing until Aerial restarted (Konka LED60R1, issue #394; old Konka on Android 5.1, #170).
+     * Looks again a minute and three minutes into the boot, and changes Home only if the list did.
+     */
+    private fun catchUpAfterBoot() {
+        if (SystemClock.elapsedRealtime() >= BOOT_CATCH_UP_MS.last()) return
+        viewModelScope.launch {
+            for (at in BOOT_CATCH_UP_MS) {
+                val wait = at - SystemClock.elapsedRealtime()
+                if (wait <= 0) continue
+                delay(wait)
+                val again = AppCatalog.load(context)
+                if (again.map { it.key }.toSet() == all.map { it.key }.toSet()) continue
+                DiagLog.i("${again.size - all.size} more apps a while into the boot")
+                all = again
+                arrange()
+            }
         }
     }
 
@@ -159,13 +206,20 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
         // Pinned TV inputs share the grid, order and hiding with the apps.
         val pinned = sources.filter { it.id in AerialSettings.pinnedSources }.map { sourceEntry(context, it) }
         AppCatalog.pinnedSources = pinned
-        val arrangement = store.arrange(all + pinned) { folder, inside ->
+        AppCatalog.sources = sources
+        // Names typed on the phone page stand in for the apps' own, everywhere Home shows one.
+        val named = all.map { e -> AppNames.of(e.key)?.let { e.copy(label = it) } ?: e }
+        val arrangement = store.arrange(named + pinned) { folder, inside ->
             val shown = inside.take(9).map { it.art }
             val art = folderArt[folder.id]?.takeIf { (made, _) -> made.size == shown.size && made.indices.all { made[it] === shown[it] } }?.second
                 ?: TileArtFactory.forFolder(shown).also { folderArt[folder.id] = shown to it }
             folderEntry(folder, art)
         }
         apps = arrangement.home
+        AppCatalog.home = arrangement.home
+        AppCatalog.folderApps = arrangement.folders
+        AppCatalog.hiddenApps = arrangement.hidden
+        AppCatalog.folders = arrangement.home.filter { it.folder != null }
         folderApps = arrangement.folders
         hiddenApps = arrangement.hidden
     }
@@ -251,6 +305,11 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /** The phone page pins by input id. */
+    private fun pinSourceById(id: String, pinned: Boolean) {
+        sources.firstOrNull { it.id == id }?.let { setSourcePinned(it, pinned) }
+    }
+
     /** Pins a TV input to Home (as the first tile, where it is easiest to reach) or takes it off. */
     fun setSourcePinned(source: TvSource, pinned: Boolean) {
         AerialSettings.setPinned(source.id, pinned)
@@ -268,15 +327,18 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
     fun refreshSystem() {
         viewModelScope.launch {
             val ctx = context
+            // Brightness off the main thread too: on MiTV without picture_backlight its first read
+            // probes the panel over binder (MitvPanel.usable).
             val (n, v, s) = withContext(Dispatchers.Default) {
                 Triple(SystemProbe.network(ctx), SystemProbe.volume(ctx), SystemProbe.sources(ctx))
             }
+            val level = withContext(Dispatchers.Default) { Brightness.level(ctx) }
             network = n; volume = v
             // TvSource holds an Intent, which has no value equality; compare what a tile shows.
             fun shown(list: List<TvSource>) = list.map { Triple(it.id, it.label, it.deviceName) }
             if (shown(s) != shown(sources)) { sources = s; arrange() } else sources = s
             homeStatus = SystemProbe.homeStatus(ctx)
-            brightness = Brightness.level(ctx)
+            brightness = level
         }
     }
 
@@ -297,6 +359,13 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun refreshNetwork() { network = SystemProbe.network(context) }
+
+    /**
+     * For the volume broadcast, one per step. It used to run refreshSystem, which read the level,
+     * then the inputs and brightness, and only then showed that level: holding a key on the slider,
+     * the steps outran those reads, and it jumped back to older levels (issue #445).
+     */
+    fun refreshVolume() { volume = SystemProbe.volume(context) }
 
     fun adjustVolume(direction: Int) {
         SystemProbe.adjustVolume(context, direction)
@@ -357,4 +426,11 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
         movingKey = null
         if (resetFocus) homeResetPending = true
     }
+
+    override fun onCleared() {
+        if (AppCatalog.renameFolder == ::renameFolder) AppCatalog.renameFolder = null
+        if (AppCatalog.pinSource == ::pinSourceById) AppCatalog.pinSource = null
+        if (AppCatalog.layout === layoutOps) AppCatalog.layout = null
+    }
 }
+

@@ -1,6 +1,7 @@
 package app.orchard.tv.wallpaper
 
 import android.content.Context
+import android.os.Build
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.util.Log
@@ -11,6 +12,7 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.core.content.edit
 import app.orchard.tv.BuildConfig
+import app.orchard.tv.guard.GuardSetup
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -37,8 +39,9 @@ data class Wallpaper(
     val caption: String? = null,
 )
 
+/** System: none of Aerial's; the TV's own screensaver starts as the firmware has it (SystemScreensaver). */
 enum class ScreensaverMode(val key: String) {
-    Aerial("aerial"), Photos("photos"), Clock("clock");
+    Aerial("aerial"), Photos("photos"), Clock("clock"), Videos("videos"), System("system");
 
     companion object {
         fun of(key: String?) = entries.firstOrNull { it.key == key } ?: Aerial
@@ -137,6 +140,8 @@ object Wallpapers {
         rebuildBackdrop()
         scope.launch { refreshDaily() }
         scope.launch(Dispatchers.IO) { clearStaleUploads() }
+        // Installs from before 1.42 have a baked picture but no copy yet.
+        scope.launch(Dispatchers.IO) { keepForLockedBoot() }
     }
 
     /**
@@ -179,6 +184,7 @@ object Wallpapers {
     fun chooseScreensaver(mode: ScreensaverMode) {
         chosenScreensaver = mode
         prefs.edit { putString("screensaver", mode.key) }
+        GuardSetup.screensaverModeChanged(app)
     }
 
     /** The concrete wallpaper the selection points at today. */
@@ -302,7 +308,29 @@ object Wallpapers {
                 File(bakedDir, "frost.png").outputStream().use { frost.compress(Bitmap.CompressFormat.PNG, 100, it) }
                 File(bakedDir, "key").writeText(key)
             }.onFailure { Log.w(TAG, "could not keep the baked backdrop", it) }
+            keepForLockedBoot()
         }
+    }
+
+    /**
+     * Before the user is unlocked at power-on, Home can read only device-protected storage, so the
+     * baked picture is copied there and MainActivity shows it until the rest can be read. Only
+     * that picture: settings, the parental PIN, photos and icons stay in credential storage. Not
+     * in "Follow App", which has no picture of its own.
+     */
+    fun lockedBootBackdrop(context: Context): File? =
+        if (Build.VERSION.SDK_INT >= 24) File(context.createDeviceProtectedStorageContext().filesDir, "boot-backdrop.jpg") else null
+
+    private fun keepForLockedBoot() {
+        val copy = lockedBootBackdrop(app) ?: return
+        runCatching {
+            val home = File(bakedDir, "home.jpg")
+            if (selectedId == AUTO || !home.exists()) { copy.delete(); return }
+            if (copy.exists() && copy.lastModified() >= home.lastModified()) return
+            val part = File(copy.parentFile, copy.name + ".part")
+            home.copyTo(part, overwrite = true)
+            check(part.renameTo(copy))
+        }.onFailure { Log.w(TAG, "could not keep the backdrop for a locked boot", it) }
     }
 
     /**

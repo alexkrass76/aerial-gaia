@@ -125,3 +125,17 @@ adb -s "$TV" shell cmd package set-home-activity --user 0 com.cvte.tv.launcher.m
 ## Поддержка форка
 
 Сохраняйте Direct Boot Activity, COMMON_HOME, CVTE HDMI route, исключение TV-плеера в Guard и отдельный revival account при обновлении upstream. Повышайте versionCode для новых релизов и сохраняйте ключ подписи. Встроенные upstream-уведомления не означают наличие совместимой Gaia-сборки; публичный автообновлятор Gaia пока не настроен.
+
+## VPN indicator (1.41-gaia.4)
+
+The home status pill and Control Center show VPN when Android reports the app's active network as a VPN. Wi-Fi/Ethernet stays visible alongside it. This reports a tunnel, not a guarantee of handshake, Internet access or coverage of other apps. The launcher does not enable VPN or change routing.
+
+Validated on the GaiaOS device: release build, in-place signed update, no VPN badge with tunnel down, badge on the home screen and Control Center with WireGuard up. Wi-Fi reconnect after boot and VPN autostart remain separate unresolved device issues.
+
+## Upstream 1.47 integration (1.47-gaia.5)
+
+Merged the v1.47 release (versionCode 55), including phone layout management, guard fixes and screensaver updates. Retained the separate Gaia package/signature, DirectBootHomeActivity as HOME + COMMON_HOME, CVTE HDMI route before upstream fallbacks, CVTE TV-player exclusion and the VPN status badge. MainActivity remains credential-storage-only in this port; upstream's locked-wallpaper bootstrap does not replace the verified Gaia bootstrap.
+
+The AirPlay receiver is a separate app; updating this launcher does not replace it or change WireGuard, Wi-Fi, Mars or MAXHUB state. Boot and physical remote/input checks must be repeated for this version before treating it as fully verified.
+
+Validation for 1.47-gaia.5: release build and all 25 upstream unit tests passed. Signing certificate matches the previously installed Gaia build. Physical Home/HDMI and reboot acceptance are pending; do not interpret the older gaia.3 boot results as a test of this update.

@@ -7,12 +7,16 @@ import app.orchard.tv.apps.TileSheet
 import app.orchard.tv.settings.AerialSettings
 import app.orchard.tv.system.DiagLog
 import app.orchard.tv.update.Updates
+import app.orchard.tv.wallpaper.ScreensaverMode
+import app.orchard.tv.wallpaper.Wallpapers
 import kotlinx.coroutines.launch
 
 /**
  * Options set from a computer over ADB, e.g.
  *   adb shell am broadcast -a app.orchard.tv.CONFIG -n app.orchard.tv/.guard.ConfigReceiver --ez keep_adb true
  *   ... --ez own_screensaver true   (keep Aerial as the system screensaver; see GuardSetup)
+ *   ... --ez guard_off_in_standby true  (Home Guard leaves at screen off, back at screen on;
+ *                                   for TVs that do not wake with it enabled, issue #371)
  *   ... --ez clear_pin true         (turn the parental PIN off, for an owner who forgot it)
  *   ... --ez large_clock true --ez clock_right false --ez one_row_home true
  *       --ez peek_next_row false --ez home_plate true --ez show_all_names false
@@ -68,8 +72,26 @@ class ConfigReceiver : BroadcastReceiver() {
             Updates.checkIfStale(force = true)
         }
         if (intent.hasExtra("keep_adb")) GuardSetup.setKeepAdb(context, intent.getBooleanExtra("keep_adb", false))
+        // ... --ei adb_probe_port <port>   (verify the keep_adb toggle without closing a working
+        //                                 link, until Aerial restarts; issue #454)
+        if (intent.hasExtra("adb_probe_port")) GuardSetup.adbProbePort = intent.getIntExtra("adb_probe_port", 5555)
+        if (intent.hasExtra("guard_off_in_standby")) GuardSetup.setOffInStandby(context, intent.getBooleanExtra("guard_off_in_standby", false))
         if (intent.hasExtra("own_screensaver")) GuardSetup.setOwnScreensaver(context, intent.getBooleanExtra("own_screensaver", false))
+        // aerial, photos, clock, videos or system.
+        intent.getStringExtra("screensaver")?.let { key ->
+            Wallpapers.init(context)
+            ScreensaverMode.entries.firstOrNull { it.key == key }?.let { Wallpapers.chooseScreensaver(it) }
+        }
+        // Opt-in for an input ("*" = any recognized Apple TV input). Empty input disables.
+        // Optional player and current-input setting key allow testing other firmware routes.
+        val cecKeys = listOf("cec_home_input", "cec_home_player", "cec_home_input_setting").filter { intent.hasExtra(it) }
+        if (cecKeys.isNotEmpty()) {
+            val edit = context.getSharedPreferences("system", Context.MODE_PRIVATE).edit()
+            for (key in cecKeys) edit.putString(key, intent.getStringExtra(key)?.takeIf { it.isNotBlank() })
+            edit.commit()
+            HomeGuardService.refreshCecHome()
+        }
         GuardSetup.ensureEnabled(context)
-        resultData = "keep_adb=${GuardSetup.keepAdb(context)}"
+        resultData = "keep_adb=${GuardSetup.keepAdb(context)} guard_off_in_standby=${GuardSetup.offInStandby(context)}"
     }
 }

@@ -217,12 +217,6 @@ fun WallpaperSheet(
                             listOf(UiSounds.Tv to R.string.st_sounds_tv, UiSounds.Aerial to R.string.st_sounds_aerial, UiSounds.Off to R.string.st_off),
                             AerialSettings.uiSounds, { AerialSettings.chooseUiSounds(it); Sounds.prepare() },
                         )
-                        // Only Android 12 and later can blur live; the others have the frost only.
-                        if (Build.VERSION.SDK_INT >= 31) Choices(
-                            R.string.st_blur, stringResource(R.string.st_blur_hint), note,
-                            listOf(false to R.string.st_blur_frost, true to R.string.st_blur_live),
-                            AerialSettings.liveBlur, AerialSettings::chooseLiveBlur,
-                        )
                     }
 
                     Spacer(Modifier.height(22.dp))
@@ -231,6 +225,8 @@ fun WallpaperSheet(
                         SettingRow(
                             R.string.ss_kind,
                             when {
+                                Wallpapers.screensaver == ScreensaverMode.Videos -> stringResource(R.string.ss_videos_hint)
+                                Wallpapers.screensaver == ScreensaverMode.System -> stringResource(R.string.ss_system_hint)
                                 Wallpapers.screensaverFollows -> stringResource(R.string.ss_follow_hint)
                                 AerialSettings.backStartsScreensaver -> stringResource(R.string.ss_back_hint)
                                 else -> null
@@ -547,6 +543,8 @@ private fun ScreensaverChoice(onStart: () -> Unit) {
             ScreensaverMode.Aerial to R.string.ss_aerial,
             ScreensaverMode.Photos to R.string.ss_photos,
             ScreensaverMode.Clock to R.string.ss_clock,
+            ScreensaverMode.Videos to R.string.ss_videos,
+            ScreensaverMode.System to R.string.ss_system,
         ).forEach { (mode, label) ->
             Chip(stringResource(label), on = Wallpapers.screensaver == mode) { Wallpapers.chooseScreensaver(mode) }
         }

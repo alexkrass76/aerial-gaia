@@ -46,12 +46,6 @@ object AerialSettings {
 
     var focusStyle by mutableStateOf(FocusStyle.HighContrast); private set
 
-    /**
-     * Home blurred live behind Control Center and folders (Android 12+), rather than the frosted
-     * wallpaper fading over it. The live blur redoes a full-screen blur on every frame anything
-     * under it moves: 20–77 ms of GPU a frame on Xiaomi MiTV-MFTR0, about 15 fps (issue #354).
-     */
-    var liveBlur by mutableStateOf(false); private set
 
     /** TV inputs pinned to Home as tiles, by TvInputInfo id. */
     var pinnedSources by mutableStateOf<Set<String>>(emptySet()); private set
@@ -131,7 +125,6 @@ object AerialSettings {
         app = context.applicationContext
         val prefs = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         focusStyle = FocusStyle.of(prefs.getString("focus_style", null))
-        liveBlur = prefs.getBoolean("live_blur", false)
         pinnedSources = prefs.getStringSet("pinned_sources", null)?.toSet() ?: emptySet()
         bootSource = prefs.getString("boot_source", null)
         bootApp = prefs.getString("boot_app", null)
@@ -254,8 +247,4 @@ object AerialSettings {
         app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit { putString("focus_style", style.key) }
     }
 
-    fun chooseLiveBlur(on: Boolean) {
-        liveBlur = on
-        app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit { putBoolean("live_blur", on) }
-    }
 }

@@ -28,7 +28,6 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
-import app.orchard.tv.settings.AerialSettings
 import app.orchard.tv.system.DiagLog
 import app.orchard.tv.ui.theme.Motion
 import app.orchard.tv.wallpaper.Aerial
@@ -71,6 +70,28 @@ class LiveFilm {
     fun skip(step: Int) {
         val p = player ?: return
         if (step < 0) p.seekToPreviousMediaItem() else p.seekToNextMediaItem()
+    }
+
+    /** The film and the moment showing now, while a player has it. */
+    fun spot(): Pair<String, Long>? = film?.id?.takeIf { player != null }?.let { it to positionMs }
+
+    /**
+     * Lets the decoder go, keeping the film and its place: these TVs have one 4K decoder, and a
+     * screensaver of its own needs it (Xiaomi MiTV-MFTR0, TCL MT5879: a second film failed to open
+     * beside the wallpaper's). The film plays again from here when Home asks for it.
+     */
+    fun letDecoderGo() {
+        player?.run { pause(); stop() }
+    }
+
+    /** After [letDecoderGo], when nothing else came to need it: the film goes on. */
+    fun goOn() {
+        player?.run { if (playbackState == Player.STATE_IDLE) prepare(); play() }
+    }
+
+    companion object {
+        /** Home's film, for MainActivity to hand the moment on to a screensaver it starts elsewhere. */
+        var onHome: LiveFilm? = null
     }
 }
 
@@ -127,8 +148,7 @@ fun LiveWallpaper(
     }
 
     fun open(): ExoPlayer {
-        val quality = AerialFormats.resolve(context, AerialSettings.aerialQuality)
-            .let { if (it == AerialQuality.DolbyVision) AerialQuality.Uhd else it }
+        val quality = AerialFormats.forWallpaper(context)
         val overHttp = Build.VERSION.SDK_INT < Build.VERSION_CODES.N
         val all = Aerials.all(context).shuffled()
         // The film the picture on screen came from, at that moment; else one fetched ahead.
@@ -192,6 +212,8 @@ fun LiveWallpaper(
         if (play) {
             val p = player ?: open().also { player = it }
             DiagLog.i("wallpaper film starts (state ${p.playbackState}, ${p.currentMediaItem?.mediaId} at ${p.currentPosition} ms)")
+            // Its decoder was let go for the screensaver (LiveFilm.letDecoderGo).
+            if (p.playbackState == Player.STATE_IDLE) p.prepare()
             p.playWhenReady = true
             snapshotFlow { showing }.first { it }
             DiagLog.i("wallpaper film moving")

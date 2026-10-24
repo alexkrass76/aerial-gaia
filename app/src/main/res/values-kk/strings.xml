@@ -133,10 +133,6 @@
     <string name="st_plate_none">Жоқ</string>
     <string name="st_sounds">Дыбыстар</string>
     <string name="st_sounds_hint">Фокус жылжығанда, таңдағанда және «Артқа» басқанда дыбыс шығады, Apple TV сияқты.</string>
-    <string name="st_blur">Панельдердің артында</string>
-    <string name="st_blur_hint">Басқару орталығы мен қалталар ашық кездегі басты экранның көрінісі. Тірі бұлдырату Apple TV-ге көбірек ұқсайды, бірақ ескі теледидарларды баяулатады.</string>
-    <string name="st_blur_frost">Күңгірт</string>
-    <string name="st_blur_live">Тірі бұлдырату</string>
     <string name="st_sounds_tv_hint">Теледидардың өз түйме дыбыстары, мәзірлеріндегідей. Теледидар параметрлерінде өшірулі болса, дыбыс болмайды: онда Aerial таңдаңыз.</string>
     <string name="st_sounds_tv">ТД</string>
     <string name="st_sounds_aerial">Aerial</string>
@@ -217,4 +213,9 @@
     <string name="notice_boot_off">Теледидар қосылғанда %1$s енді ашылмайды</string>
     <string name="tile_stock_home">ТД басты экраны</string>
     <string name="tile_kids">Балаларға</string>
+    <string name="net_vpn">VPN</string>
+    <string name="ss_videos">Бейне</string>
+    <string name="ss_videos_hint">Телефон бетінен MP4 немесе MOV қосыңыз. Интернетсіз ойнатылады; бейне болмаса, фотолар көрсетіледі.</string>
+    <string name="ss_system">Жүйелік</string>
+    <string name="ss_system_hint">Теледидардың өз экран сақтағышы (мысалы, Xiaomi суреттері). Aerial өзінікін көрсетпейді.</string>
 </resources>

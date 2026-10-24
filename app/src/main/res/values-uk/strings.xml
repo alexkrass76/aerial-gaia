@@ -133,10 +133,6 @@
     <string name="st_plate_none">Немає</string>
     <string name="st_sounds">Звуки</string>
     <string name="st_sounds_hint">Звук під час переміщення фокуса, вибору та натискання «Назад», як на Apple TV.</string>
-    <string name="st_blur">За панелями</string>
-    <string name="st_blur_hint">Як виглядає головний екран за Пунктом керування й папками. Живе розмиття найбільше схоже на Apple TV, але сповільнює старі телевізори.</string>
-    <string name="st_blur_frost">Матове</string>
-    <string name="st_blur_live">Живе розмиття</string>
     <string name="st_sounds_tv_hint">Власні звуки клавіш телевізора, як у його меню. Якщо їх вимкнено в налаштуваннях телевізора, звуку не буде: тоді виберіть Aerial.</string>
     <string name="st_sounds_tv">ТВ</string>
     <string name="st_sounds_aerial">Aerial</string>
@@ -217,4 +213,9 @@
     <string name="notice_boot_off">%1$s більше не відкриватиметься під час увімкнення телевізора</string>
     <string name="tile_stock_home">Головний екран ТБ</string>
     <string name="tile_kids">Дітям</string>
+    <string name="net_vpn">VPN</string>
+    <string name="ss_videos">Відео</string>
+    <string name="ss_videos_hint">Додайте MP4 або MOV зі сторінки на телефоні. Перегляд без мережі; якщо відео недоступні, показуються фото.</string>
+    <string name="ss_system">Системна</string>
+    <string name="ss_system_hint">Заставка самого телевізора, як задумав виробник (наприклад, картини Xiaomi). Aerial свою не показує.</string>
 </resources>
