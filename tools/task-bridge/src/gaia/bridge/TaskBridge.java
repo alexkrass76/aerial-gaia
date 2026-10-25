@@ -6,10 +6,11 @@ import android.os.*;
 import java.util.*;
 import org.json.*;
 
-/** Shell-UID helper for the current boot. No network, arbitrary commands, snapshots or force-stop. */
+/** Shell-UID helper: task stacks and fixed Wi-Fi operations; no arbitrary commands or screen capture. */
 public final class TaskBridge extends Binder {
     private static final String APP = "app.orchard.tv.gaia";
     private static final String TOKEN = "app.orchard.tv.gaia.tasks.v1";
+    private final DeviceBridge devices = new DeviceBridge();
     private final int uid;
     private final Object service;
     private final Class<?> api;
@@ -34,6 +35,15 @@ public final class TaskBridge extends Binder {
         data.enforceInterface(TOKEN);
         long identity = Binder.clearCallingIdentity();
         try {
+            if (code >= 10 && code <= 13) {
+                String result;
+                if (code == 10) result = devices.wifiSnapshot();
+                else if (code == 11) result = devices.scanWifi();
+                else if (code == 12) result = devices.connectSaved(data.readInt());
+                else result = devices.addAndConnect(data.readString(), data.readString(), data.readString(), data.readInt());
+                reply.writeNoException(); reply.writeString(result);
+                return true;
+            }
             if (code == 1) {
                 JSONArray rows = new JSONArray();
                 for (Object item : tasks()) {

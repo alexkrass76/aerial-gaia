@@ -1133,7 +1133,7 @@ fun HomeScreen(
 
         WallpaperSheet(
             visible = overlay is Overlay.Wallpaper,
-            onDismiss = { vm.overlay = Overlay.ControlCenter() },
+            onDismiss = { vm.overlay = if (context.packageName == "app.orchard.tv.gaia") Overlay.GaiaSettings(selectedSection = "personalize") else Overlay.ControlCenter() },
             hiddenCount = vm.hiddenApps.size,
             onHiddenApps = { vm.whenUnlocked { vm.overlay = Overlay.HiddenApps } },
             onStartScreensaver = {

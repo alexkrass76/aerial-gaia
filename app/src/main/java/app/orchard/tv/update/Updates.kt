@@ -54,7 +54,16 @@ object Updates {
     const val CONTROL_CENTER_MAX_AGE_MS = RETRY_MS
 
     /** This build's version, e.g. "1.17" (the guard build's "-guard" left off). */
-    val current: String = BuildConfig.VERSION_NAME.substringBefore('-')
+    val isGaia: Boolean = BuildConfig.APPLICATION_ID == "app.orchard.tv.gaia"
+    val current: String = if (isGaia) BuildConfig.VERSION_NAME else BuildConfig.VERSION_NAME.substringBefore('-')
+    const val GAIA_RELEASES = "https://github.com/alexkrass76/aerial-gaia/releases"
+    const val GAIA_GUIDE = "https://github.com/alexkrass76/aerial-gaia/blob/gaia/docs/GAIAOS.md"
+
+    fun helpUrl(setup: Boolean, lanAddress: String? = null): String {
+        if (isGaia) return if (setup) GAIA_GUIDE else GAIA_RELEASES
+        return "https://aerial.qust.me/update/#" + (if (setup) "setup=1&" else "") +
+            "v=$current&f=${BuildConfig.FLAVOR}" + (lanAddress?.let { "&tv=$it" } ?: "")
+    }
 
     /** The newer release's version, or null when this is the latest (or nothing is known yet). */
     var available by mutableStateOf<String?>(null); private set
@@ -71,6 +80,12 @@ object Updates {
         if (started) return
         started = true
         prefs = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        if (isGaia) {
+            // Never revive an upstream update notification cached by an older Gaia build.
+            available = null
+            prefs.edit { remove("latest"); remove("checked_at") }
+            return
+        }
         available = prefs.getString("latest", null)?.takeIf { newer(it, current) }
         // A download left from an install that has since finished or been given up.
         scope.launch(Dispatchers.IO) {
@@ -84,7 +99,7 @@ object Updates {
      * release out an hour ago was not shown there for hours more (issue #301).
      */
     fun checkIfStale(force: Boolean = false, maxAgeMs: Long = CHECK_EVERY_MS) {
-        if (!started) return
+        if (isGaia || !started) return
         val now = System.currentTimeMillis()
         if (!force && (now - lastAttempt < RETRY_MS || now - prefs.getLong("checked_at", 0) < maxAgeMs)) return
         lastAttempt = now
@@ -149,7 +164,7 @@ object Updates {
     private const val PACKAGE = "app.orchard.tv"
 
     /** Whether this copy can update itself from the release at all. */
-    fun canInstall(context: Context): Boolean = context.packageName == PACKAGE
+    fun canInstall(context: Context): Boolean = !isGaia && context.packageName == PACKAGE
 
     /**
      * Downloads this flavor's APK of the latest release and opens the system installer on it.
@@ -226,6 +241,7 @@ object Updates {
 
     /** The website first (reachable in China), then GitHub. Returns the APK's info once it parses. */
     private suspend fun downloadFrom(context: Context, file: File): PackageInfo? {
+        if (isGaia) return null
         testApk?.takeIf { it.isFile }?.let { test ->
             file.parentFile?.mkdirs()
             test.copyTo(file, overwrite = true)

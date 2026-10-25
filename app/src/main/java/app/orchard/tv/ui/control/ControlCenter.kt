@@ -221,6 +221,10 @@ private fun MainPage(vm: HomeViewModel, now: LocalDateTime, takeFocus: Boolean, 
                 stringResource(R.string.cc_network),
             ) {
                 vm.whenUnlocked {
+                    if (context.packageName == "app.orchard.tv.gaia") {
+                        vm.overlay = Overlay.GaiaSettings("network")
+                        return@whenUnlocked
+                    }
                     val pages = SystemProbe.networkSettingsIntents(context, ethernet = vm.network.kind == NetKind.Ethernet)
                     LaunchFallback.arm(pages.drop(1))
                     onOpen(pages.first())
@@ -228,6 +232,10 @@ private fun MainPage(vm: HomeViewModel, now: LocalDateTime, takeFocus: Boolean, 
             }
             RoundButton(Glyph.Bluetooth, stringResource(R.string.cc_bluetooth)) {
                 vm.whenUnlocked {
+                    if (context.packageName == "app.orchard.tv.gaia") {
+                        vm.overlay = Overlay.GaiaSettings("bluetooth")
+                        return@whenUnlocked
+                    }
                     val pages = SystemProbe.bluetoothSettingsIntents(context)
                     LaunchFallback.arm(pages.drop(1))
                     onOpen(pages.first())
@@ -243,7 +251,7 @@ private fun MainPage(vm: HomeViewModel, now: LocalDateTime, takeFocus: Boolean, 
 
         Spacer(Modifier.height(6.dp))
         // How Home looks (wallpaper, screensaver, focus style, hidden apps, weather) lives in one place.
-        MenuRow(
+        if (context.packageName != "app.orchard.tv.gaia") MenuRow(
             Glyph.Photo,
             stringResource(R.string.cc_personalize),
             onClick = { vm.overlay = Overlay.Wallpaper },
@@ -280,7 +288,7 @@ private fun MainPage(vm: HomeViewModel, now: LocalDateTime, takeFocus: Boolean, 
             Box(Modifier.size(7.dp).clip(CircleShape).background(dot))
             Spacer(Modifier.width(8.dp))
             BasicText(text, style = Type.Caption, modifier = Modifier.weight(1f))
-            BasicText("Aerial ${Updates.current}", style = Type.Caption.copy(color = Palette.TertiaryLabel), modifier = Modifier.padding(end = 14.dp))
+            BasicText("${if (Updates.isGaia) "Aerial Gaia" else "Aerial"} ${Updates.current}", style = Type.Caption.copy(color = Palette.TertiaryLabel), modifier = Modifier.padding(end = 14.dp))
         }
     }
 }
@@ -305,8 +313,7 @@ private fun UpdatePage(vm: HomeViewModel, takeFocus: Boolean) {
     val canInstall = remember { Updates.canInstall(context) }
     var qr by remember { mutableStateOf<ImageBitmap?>(null) }
     LaunchedEffect(Unit) {
-        val ip = PhoneServer.lanAddress(context)
-        val url = "https://aerial.qust.me/update/#v=${Updates.current}&f=${BuildConfig.FLAVOR}" + (ip?.let { "&tv=$it" } ?: "")
+        val url = Updates.helpUrl(setup = false, lanAddress = if (Updates.isGaia) null else PhoneServer.lanAddress(context))
         qr = withContext(Dispatchers.Default) { PhoneServer.qr(url).asImageBitmap() }
     }
     Column {
@@ -352,7 +359,7 @@ private fun UpdatePage(vm: HomeViewModel, takeFocus: Boolean) {
                 Column(Modifier.weight(1f)) {
                     BasicText(stringResource(if (canInstall) R.string.cc_update_scan_else else R.string.cc_update_scan), style = Type.Body)
                     Spacer(Modifier.height(6.dp))
-                    BasicText(stringResource(R.string.cc_update_keeps), style = Type.Caption)
+                    BasicText(stringResource(if (Updates.isGaia) R.string.gs_update_manual else R.string.cc_update_keeps), style = Type.Caption)
                 }
             }
         }
@@ -379,8 +386,7 @@ private fun SetupPage(vm: HomeViewModel, takeFocus: Boolean, onOpen: (android.co
     val revival = remember { SystemProbe.revivalSettingsIntent(context) }
     var qr by remember { mutableStateOf<ImageBitmap?>(null) }
     LaunchedEffect(Unit) {
-        val ip = PhoneServer.lanAddress(context)
-        val url = "https://aerial.qust.me/update/#setup=1&v=${Updates.current}&f=${BuildConfig.FLAVOR}" + (ip?.let { "&tv=$it" } ?: "")
+        val url = Updates.helpUrl(setup = true, lanAddress = if (Updates.isGaia) null else PhoneServer.lanAddress(context))
         qr = withContext(Dispatchers.Default) { PhoneServer.qr(url).asImageBitmap() }
     }
     Column {
@@ -427,7 +433,7 @@ private fun RoundButton(glyph: Glyph, label: String, focusRequester: FocusReques
  * and a sideways drag steps the level, [steps] steps across the width of the row.
  */
 @Composable
-private fun SliderRow(
+internal fun SliderRow(
     glyph: Glyph,
     level: Float,
     value: String,
@@ -512,6 +518,10 @@ internal fun VolumeRow(vm: HomeViewModel) {
 @Composable
 private fun BrightnessRow(vm: HomeViewModel) {
     val context = LocalContext.current
+    if (context.packageName == "app.orchard.tv.gaia") {
+        app.orchard.tv.ui.settings.GaiaBacklightRow(vm)
+        return
+    }
     val level = vm.brightness
     if (level == null) {
         MenuRow(Glyph.Sun, stringResource(R.string.cc_brightness), onClick = {

@@ -437,3 +437,221 @@ switching between different IMEs remains untested. Automatic clock changes, font
 scaling and sound toggles were not exercised on the TV. No reboot or connectivity
 changes. The final APK only corrects default-value wording and removes a redundant
 migration notice; it was rebuilt and reinstalled with all tests passing.
+
+## Native connectivity lists (1.48-gaia.19, local candidate)
+
+Control Center Network and Bluetooth now open Gaia pages. Wi-Fi lists saved
+profiles, the currently associated profile and cached nearby SSIDs/signal levels.
+Search requests a scan and refreshes once after three seconds; Refresh reads the
+latest result. There is no permanent polling. Duplicate firmware profile IDs are
+collapsed. Nearby networks are informational until the credential editor is built.
+Selecting another saved profile opens a confirmation explaining the possible
+connection interruption. The helper revalidates that ID against the saved list;
+a successful request is not presented as proof of connection or Internet access.
+
+The existing private, launcher-UID-only Binder bridge adds only three operations:
+Wi-Fi snapshot, scan, and connect-by-saved-ID. Configured credentials never cross
+Binder into Aerial. Wi-Fi service calls retain shell UID 2000 and shell package
+attribution. A framework context is initialized lazily on the helper main thread;
+no root request, arbitrary command or new network endpoint is added. This adapter
+is specific to the tested Android 14 API signatures and fails closed elsewhere.
+The diagnostic provider is still protected by DUMP and a shell/root UID check;
+its device_snapshot method only reads Wi-Fi data. Do not publish its output.
+
+Bluetooth reads bonded devices from the launcher process with BLUETOOTH_CONNECT.
+This runtime permission was granted over ADB for the test installation. Without
+it, the page reports failure rather than an empty device list. Pairing, unpairing,
+audio-profile switching, new Wi-Fi credentials and Ethernet/IP editors remain
+unimplemented. No adapter on/off switches are included in this iteration.
+
+When upgrading the helper from pre-gaia.19, an already-running old helper must be
+replaced once; changing APK alone does not replace its running dex. The test update
+restarted only the identified Gaia helper process. At the next boot, existing
+bootstrap uses the bundled new dex. No TV reboot was performed here.
+
+Validation: release build and 96 unit tests passed, including snapshot Binder reply
+and saved-network-ID/error propagation. Installed and speed-compiled on TV. Native
+Wi-Fi screen and manual scan rendered; firmware duplicates were reduced to two
+unique saved profiles. Bluetooth listed the paired remote via the app API. Existing
+Wi-Fi, VPN and Bluetooth stayed enabled; no saved-network switch or pairing change
+was executed. The updated helper attached with autostart enabled and no sampled
+AndroidRuntime failures. Physical double Home acceptance is pending. The final
+UI-only correction avoids showing unavailable while status is still loading.
+
+## Wi-Fi credentials and Bluetooth pairing (1.48-gaia.20, uninstalled candidate)
+
+The nearby Wi-Fi list distinguishes open/WPA2-PSK from unsupported WEP, enterprise,
+WPA-only, pure SAE and OWE networks. WPA2/SAE transition networks can use WPA2.
+The form supports a UTF-8 SSID of at most 32 bytes, WPA2 ASCII passphrases of
+8–63 characters or a 64-digit hexadecimal key. Shared Java validation is compiled
+into both launcher and helper. Credentials travel as typed private Binder fields,
+never shell arguments, logs or launcher preferences. The editor masks input,
+disables correction and temporarily sets FLAG_SECURE, preserving an existing flag.
+It clears its field on submit/back and does not save state across recreation.
+
+The helper rechecks scan results before applying a profile. New connections refuse
+an already-saved SSID. Explicit Change network password targets an existing numeric
+ID, verifies its SSID and WPA-PSK type, and copies its configuration before replacing
+the key. It does not reveal the old key. A rejected enable request removes only a
+profile newly created by this operation; existing profiles are not deleted. A later
+authentication failure can leave the new profile saved, so its password can be
+corrected through the explicit editor. Request acceptance does not mean successful
+association or Internet access. Credentials and connection APIs still need live
+validation before this candidate can be described as working on the TV.
+
+Bluetooth discovery is user-triggered, lasts at most 20 seconds, and is cancelled
+on page disposal/stop. It does not cancel a scan owned by another caller. Only a
+device discovered on this page can be selected for pairing; already-bonded devices
+are not offered for re-pairing. A second action initiates createBond. Android owns
+any PIN/code confirmation dialog (its presentation depends on firmware); Aerial
+neither bypasses nor automatically accepts it. No CVTE settings Activity is launched
+by this code. Unpairing and Bluetooth audio-profile routing remain unimplemented.
+BLUETOOTH_SCAN is an additional runtime permission required for discovery; location
+is not derived from scan results. Existing bonds and adapter state are untouched.
+
+Validation: standard release build and 107 unit tests passed, including Wi-Fi
+security/length boundaries, credential Binder framing, discovery timeout/disposal,
+and not cancelling another caller's scan. No network or bond was changed on the TV.
+Physical acceptance was deferred by the owner. The candidate is saved locally;
+TV remains on gaia.19 and the current helper is not restarted in this round.
+When testing later, update the bundled helper as well and grant BLUETOOTH_SCAN;
+old helpers do not support the new credential transaction.
+
+## System captions (1.48-gaia.21, uninstalled candidate)
+
+System preferences now includes a native Subtitles page: enable system captions,
+choose text scale (0.75–2.0), and cycle through Android presets (white/black,
+black/white, yellow/black, yellow/blue, unspecified and custom). The approximate
+preview illustrates the four explicit presets. For custom/unspecified styles it
+explains that rendering belongs to the player rather than inventing a preview.
+These preferences apply only to players that honor Android CaptioningManager;
+Aerial does not inject subtitles into HDMI, AirPlay or third-party apps.
+
+Only three allowlisted Settings.Secure entries are written, using the existing
+WRITE_SECURE_SETTINGS permission, parent lock, stale-state check and read-back.
+Custom color/typeface/edge values and subtitle language are untouched. Selecting
+Custom again restores use of those existing values; choosing another preset does
+not delete them. No accessibility service is enabled or disabled. There is no
+CVTE Activity redirect and no helper protocol change in this iteration.
+
+Device acceptance is deferred: this candidate is not installed and no TV settings
+were changed. TV remains on gaia.19. The pending gaia.20 Wi-Fi/Bluetooth operations
+still need live validation and the helper/permission update documented above.
+
+Validation: standard release build and 111 unit tests passed. New tests confirm
+Android CaptioningManager sees the enabled flag and scale, preset changes preserve
+custom colors, stale writes are rejected, and invalid values cannot be written.
+Actual playback and remote navigation on GaiaOS remain unverified.
+
+## Settings sheet styling (1.48-gaia.22, uninstalled candidate)
+
+The native settings surface now follows Personalize: full-width bottom sheet,
+360 dp tall on the 960×540 canvas, wallpaper glass with 30 dp top corners,
+25% backdrop dimming, matching side/top insets and Drawer entrance easing.
+Rows use a minimum height of 58 dp with icons and labels on the left, values on
+the right, and up to two lines for longer text. Lists retain remote focus handling
+and scroll; each settings page starts with its own scroll state. Back keeps the
+existing navigation hierarchy; tapping above the sheet has the same action.
+No system-setting behavior or helper protocol was changed. Release compilation
+is checked locally; visual and physical remote acceptance remain deferred.
+The TV was not updated in this iteration.
+
+## Settings tiles and Personalize (1.48-gaia.23, uninstalled candidate)
+
+The settings landing page uses a scrollable three-column grid with icons, section
+names and hints. Personalize is its first tile; the separate Control Center entry
+is removed for Gaia only. Its existing wallpaper, screensaver, weather, hidden-app,
+PIN and phone configuration controls remain intact. Back returns to the settings
+grid and requests focus on Personalize. Returning from other top-level sections
+likewise restores their tile. Subpages retain their existing parameter rows.
+Upstream package navigation is unchanged. Release compilation is checked locally;
+remote focus/scroll and appearance still require device acceptance. No TV update,
+reboot or system setting changes were performed.
+
+## Upstream updater disabled (1.48-gaia.24, uninstalled candidate)
+
+Gaia no longer initializes cached upstream update offers or performs scheduled,
+Control Center or forced version checks. Its old latest/checked_at cache entries
+are removed at initialization; unrelated preferences are retained. Installation
+and download entry points also reject Gaia, including the diagnostic test-APK
+path. Original upstream package builds retain their updater behavior.
+
+Manual update QR links now point to alexkrass76/aerial-gaia releases, and setup
+links point to this fork's GaiaOS guide, without TV addresses or version parameters.
+The version label preserves the full Gaia suffix. No GitHub release polling,
+automatic download or installation has been implemented; updates remain manual.
+This change does not imply that a newer public Gaia release exists. Device
+installation and acceptance remain deferred.
+
+Validation: release build and 114 unit tests passed, including cached upstream
+notification removal, disabled forced checks/installer, full Gaia version and
+manual fork links that omit the device address. No TV installation was performed.
+
+## Task switcher transitions (1.48-gaia.25)
+
+The switcher registers opening/closing window transitions: 180 ms alpha and a
+1.5% scale change, without capturing another screenshot or blurring video.
+Android 14 uses overrideActivityTransition; older versions use the legacy override.
+Animation is suppressed when animator or transition scale is zero. Remote input
+is not delayed, and the existing tile focus and helper protocol remain unchanged.
+Cross-task switches to other applications remain controlled by Android; this does
+not promise custom animations for those paths. Physical acceptance is pending.
+API behavior: https://developer.android.com/reference/android/app/Activity#overrideActivityTransition(int,int,int)
+
+## Native picture/audio discovery (1.48-gaia.26)
+
+The app binds explicitly to the installed CVTE TV API service and uses the
+firmware's read-only interface methods via its on-device system library. No vendor
+APK/JAR or decompiled implementation is bundled. Binding from a standalone shell
+app_process was rejected by Android because it was not a registered application;
+reading from the launcher process succeeded without root or new permissions.
+The connection is unbound after each snapshot; binding has a five-second timeout
+and all reads run off the UI thread. The individual Binder reads are synchronous;
+a hung firmware call is not cancelled by the binding timeout. There is no polling.
+
+The Picture tile and Sound > Audio outputs pages show the current mode, supported
+mode lists, picture values and backlight, with per-item availability reported by
+CVTE. They are explicitly read-only. The shell-only diagnostic provider also
+exposes av_snapshot; no setter or arbitrary reflection method is exposed.
+
+On the tested firmware, discovery returned five picture modes and four audio
+outputs; digital audio offered PCM and RAW. In Soft picture mode the five picture
+controls were disabled while backlight was enabled. Availability depends on mode
+and input; do not turn every declared API into an enabled control. Several vendor
+methods are stubs, and generic Android screen brightness is not evidence of actual
+panel backlight control. HDMI/CEC, picture mode writes, audio routing writes and
+physical picture/audio changes remain untested. No TV picture/audio values were
+changed in this discovery round. The original snapshot is stored locally only.
+
+Validation: release build passed; gaia.26 installed over the existing launcher and
+speed-compiled. Shell-only av_snapshot successfully read the firmware and the
+Picture page rendered the same mode/value data. Injected Down keys scrolled the
+read-only rows. Helper remained connected with autostart enabled. Physical remote
+acceptance, audio page layout and all write operations remain unverified.
+The Control Center still displays generic Android brightness; its value differs
+from CVTE backlight, so it must be migrated before claiming actual panel control.
+
+
+## Native picture/audio controls (1.48-gaia.27)
+
+The Control Center now uses CVTE panel backlight instead of generic Android screen
+brightness. Backlight steps are 5 points, limited to 5–100. Picture presets and
+PCM/RAW require confirmation; numeric picture controls are editable only in User
+mode when the firmware reports them enabled. Fixed API and enum allowlists exclude
+panel power, PWM frequency, resets and audio routing. Routing remains read-only
+because the vendor implementation also changes CEC and routes sound asynchronously.
+
+Before writes the adapter rereads the source, mode, availability and previous value.
+It rejects stale snapshots and verifies the resulting firmware value. These checks
+are not an atomic transaction with the vendor service. A synchronous preferences
+journal preserves one last change before writing. Manual Undo survives launcher
+restart, checks the source and current value, and verifies restoration. It is not
+an automatic timed rollback or a complete calibration backup. Later changes replace
+the single undo entry. The shell diagnostic provider remains read-only.
+
+Validation: release build and 121 unit tests passed. Installed and speed-compiled
+on the test TV. The Control Center showed native backlight 100; an injected Left
+key changed it to 95, and the Picture page Undo button restored 100. Read-back
+confirmed unchanged Soft picture values, speaker routing and PCM. The helper
+remained connected with autostart enabled. Picture mode/numeric writes and PCM/RAW
+have not been physically verified; no reboot or audio routing change was performed.

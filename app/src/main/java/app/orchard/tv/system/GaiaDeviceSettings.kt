@@ -8,6 +8,9 @@ import app.orchard.tv.settings.AerialSettings
 /** Fixed, reversible Android preferences. Never accepts arbitrary setting names or shell input. */
 internal object GaiaDeviceSettings {
     enum class Key(val table: String, val setting: String, val options: List<String>) {
+        CAPTIONS_ENABLED("secure", "accessibility_captioning_enabled", listOf("0", "1")),
+        CAPTIONS_SCALE("secure", "accessibility_captioning_font_scale", listOf("0.75", "1.0", "1.25", "1.5", "2.0")),
+        CAPTIONS_STYLE("secure", "accessibility_captioning_preset", listOf("0", "1", "2", "3", "4", "-1")),
         AUTO_TIME("global", "auto_time", listOf("0", "1")),
         CLOCK_FORMAT("system", "time_12_24", listOf("12", "24")),
         TOUCH_SOUND("system", "sound_effects_enabled", listOf("0", "1")),
@@ -18,10 +21,12 @@ internal object GaiaDeviceSettings {
     }
 
     fun read(context: Context, key: Key): String? = when (key.table) {
+        "secure" -> Settings.Secure.getString(context.contentResolver, key.setting)
         "global" -> Settings.Global.getString(context.contentResolver, key.setting)
         else -> Settings.System.getString(context.contentResolver, key.setting)
     }
     private fun put(context: Context, key: Key, value: String?): Boolean = when (key.table) {
+        "secure" -> Settings.Secure.putString(context.contentResolver, key.setting, value)
         "global" -> Settings.Global.putString(context.contentResolver, key.setting, value)
         else -> Settings.System.putString(context.contentResolver, key.setting, value)
     }

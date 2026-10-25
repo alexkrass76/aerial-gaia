@@ -1,6 +1,7 @@
 package app.orchard.tv.tasks
 
 import android.os.Bundle
+import android.os.Build
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.border
 import androidx.compose.foundation.shape.CircleShape
@@ -50,8 +51,37 @@ import org.json.JSONArray
 /** Experimental switcher; deliberately independent from HOME and Direct Boot. */
 class TaskSwitcherActivity : ComponentActivity() {
     private data class Task(val id: Int, val app: AppEntry, val closable: Boolean)
+    private fun reducedMotion(): Boolean = listOf(
+        Settings.Global.ANIMATOR_DURATION_SCALE, Settings.Global.TRANSITION_ANIMATION_SCALE,
+    ).any { Settings.Global.getFloat(contentResolver, it, 1f) == 0f }
+
+    /** Animate only activity surfaces, without snapshots, blur or delaying remote input. */
+    @Suppress("DEPRECATION")
+    private fun configureTransitions() {
+        val reduced = reducedMotion()
+        val enter = if (reduced) 0 else R.anim.tasks_open_enter
+        val exit = if (reduced) 0 else R.anim.tasks_open_exit
+        if (Build.VERSION.SDK_INT >= 34) {
+            overrideActivityTransition(OVERRIDE_TRANSITION_OPEN, enter, exit)
+            overrideActivityTransition(OVERRIDE_TRANSITION_CLOSE,
+                if (reduced) 0 else R.anim.tasks_close_enter,
+                if (reduced) 0 else R.anim.tasks_close_exit)
+        } else overridePendingTransition(enter, exit)
+    }
+
+    @Suppress("DEPRECATION")
+    override fun finish() {
+        super.finish()
+        if (Build.VERSION.SDK_INT < 34) {
+            val reduced = reducedMotion()
+            overridePendingTransition(if (reduced) 0 else R.anim.tasks_close_enter,
+                if (reduced) 0 else R.anim.tasks_close_exit)
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        configureTransitions()
         setContent {
             CompositionLocalProvider(
                 LocalDensity provides Density(canvasDensity(resources.displayMetrics)),

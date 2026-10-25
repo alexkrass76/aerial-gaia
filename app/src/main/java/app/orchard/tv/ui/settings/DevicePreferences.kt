@@ -49,6 +49,8 @@ internal fun DevicePreferences(page: String, vm: HomeViewModel, revision: Int) {
     if (failed) BasicText(stringResource(R.string.gs_write_failed), style = Type.Caption)
     if (busy) BasicText(stringResource(R.string.tasks_loading), style = Type.Caption)
     val rows = when (page) {
+        "captions" -> listOf(Key.CAPTIONS_ENABLED to R.string.gs_captions_enabled,
+            Key.CAPTIONS_SCALE to R.string.gs_captions_size, Key.CAPTIONS_STYLE to R.string.gs_captions_style)
         "datetime" -> listOf(Key.AUTO_TIME to R.string.gs_auto_time, Key.CLOCK_FORMAT to R.string.gs_clock_format)
         "display" -> listOf(Key.FONT_SCALE to R.string.gs_font_scale,
             Key.WINDOW_ANIMATION to R.string.gs_window_animation,
@@ -56,6 +58,10 @@ internal fun DevicePreferences(page: String, vm: HomeViewModel, revision: Int) {
             Key.ANIMATOR_DURATION to R.string.gs_animator_duration)
         "sound" -> listOf(Key.TOUCH_SOUND to R.string.gs_touch_sound)
         else -> emptyList()
+    }
+    if (page == "captions") {
+        BasicText(stringResource(R.string.gs_captions_scope), style = Type.Caption)
+        CaptionPreview(values[Key.CAPTIONS_STYLE], values[Key.CAPTIONS_SCALE])
     }
     if (page == "datetime") {
         BasicText(java.util.TimeZone.getDefault().id, style = Type.Body)
@@ -74,7 +80,15 @@ internal fun DevicePreferences(page: String, vm: HomeViewModel, revision: Int) {
         val current = values[key]
         val text = when {
             current == null -> stringResource(if (values.containsKey(key)) R.string.gs_default_value else R.string.tasks_loading)
-            key == Key.AUTO_TIME || key == Key.TOUCH_SOUND -> stringResource(if (current == "1") R.string.perm_on else R.string.perm_off)
+            key == Key.AUTO_TIME || key == Key.TOUCH_SOUND || key == Key.CAPTIONS_ENABLED -> stringResource(if (current == "1") R.string.perm_on else R.string.perm_off)
+            key == Key.CAPTIONS_STYLE -> stringResource(when (current) {
+                "0" -> R.string.gs_captions_white_black
+                "1" -> R.string.gs_captions_black_white
+                "2" -> R.string.gs_captions_yellow_black
+                "3" -> R.string.gs_captions_yellow_blue
+                "4" -> R.string.gs_default_value
+                else -> R.string.gs_captions_custom
+            })
             key == Key.CLOCK_FORMAT -> stringResource(R.string.gs_hours, current)
             else -> "$current ×"
         }

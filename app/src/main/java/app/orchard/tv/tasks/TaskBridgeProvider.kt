@@ -14,6 +14,13 @@ class TaskBridgeProvider : ContentProvider() {
     override fun onCreate() = true
     override fun call(method: String, arg: String?, extras: Bundle?): Bundle {
         check(Binder.getCallingUid() == 2000 || Binder.getCallingUid() == 0) { "Shell required" }
+        if (method == "av_snapshot") return Bundle().apply {
+            putString("result", app.orchard.tv.system.GaiaAvSettings.snapshot(requireNotNull(context)).toString())
+        }
+        if (method == "device_snapshot") return Bundle().apply {
+            require(arg == "wifi")
+            putString("result", TaskBridgeClient.request(10))
+        }
         if (method == "status") return Bundle().apply {
             putBoolean("autostart", requireNotNull(context).getSharedPreferences("task_bridge", 0).getBoolean("autostart", false))
             putBoolean("connected", TaskBridgeClient.binder?.isBinderAlive == true)
@@ -81,6 +88,21 @@ internal object TaskBridgeClient {
         listener()
     }
     @Volatile var binder: IBinder? = null
+    fun addWifi(ssid: String, security: String, password: String, savedId: Int = -1): String {
+        check(!app.orchard.tv.settings.AerialSettings.locked)
+        require(savedId >= -1)
+        gaia.bridge.WifiInputPolicy.validate(ssid, security, password)
+        val remote = binder ?: error("Bridge unavailable")
+        val data = Parcel.obtain()
+        val reply = Parcel.obtain()
+        try {
+            data.writeInterfaceToken("app.orchard.tv.gaia.tasks.v1")
+            data.writeString(ssid); data.writeString(security); data.writeString(password); data.writeInt(savedId)
+            check(remote.transact(13, data, reply, 0))
+            reply.readException()
+            return requireNotNull(reply.readString())
+        } finally { data.recycle(); reply.recycle() }
+    }
     fun request(code: Int, taskId: Int? = null): String? {
         val remote = binder ?: error("Bridge unavailable")
         val data = Parcel.obtain()
@@ -90,7 +112,7 @@ internal object TaskBridgeClient {
             if (taskId != null) data.writeInt(taskId)
             check(remote.transact(code, data, reply, 0))
             reply.readException()
-            return if (code == 1) reply.readString() else null
+            return if (code == 1 || code in 10..12) reply.readString() else null
         } finally { data.recycle(); reply.recycle() }
     }
 }

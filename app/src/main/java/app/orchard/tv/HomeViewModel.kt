@@ -53,7 +53,7 @@ sealed interface Overlay {
     data object HiddenApps : Overlay
     /** App Info drawn by Aerial, on firmware that has no screen for it. */
     data class AppInfo(val packageName: String, val fromSettings: Boolean = false) : Overlay
-    data class GaiaSettings(val page: String = "main", val selectedApp: String? = null) : Overlay
+    data class GaiaSettings(val page: String = "main", val selectedApp: String? = null, val selectedSection: String? = null) : Overlay
     data object Wallpaper : Overlay
     data class Pin(val mode: PinMode, val onDone: () -> Unit) : Overlay
 }

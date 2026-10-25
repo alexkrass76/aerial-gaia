@@ -9,19 +9,20 @@ plugins {
 
 android {
     namespace = "app.orchard.tv"
+    sourceSets.getByName("main").java.srcDir(rootProject.file("tools/task-bridge/policy"))
     compileSdk = 36
 
     defaultConfig {
         applicationId = "app.orchard.tv"
         if (project.hasProperty("gaia")) {
             applicationIdSuffix = ".gaia"
-            versionNameSuffix = "-gaia.18"
+            versionNameSuffix = "-gaia.27"
         }
         resValue("string", "revival_account_type", if (project.hasProperty("gaia")) "app.orchard.tv.gaia" else "app.orchard.tv")
         // Android 5.0. Compose 1.10 and later need 6.0, so the Compose BOM below stays on 1.9.
         minSdk = 21
         targetSdk = 34
-        versionCode = if (project.hasProperty("gaia")) 68 else 56
+        versionCode = if (project.hasProperty("gaia")) 77 else 56
         versionName = "1.48"
         // `./gradlew -Pdiag ...`: a build for one reporter's TV whose logcat shows no app lines;
         // see system/DiagLog.kt.
@@ -119,6 +120,7 @@ if (project.hasProperty("gaia")) {
     val helperAssets = layout.buildDirectory.dir("generated/taskBridgeAssets")
     val buildHelper = tasks.register<Exec>("buildGaiaTaskBridge") {
         inputs.dir(rootProject.file("tools/task-bridge/src"))
+        inputs.dir(rootProject.file("tools/task-bridge/policy"))
         inputs.file(rootProject.file("tools/task-bridge/build.sh"))
         outputs.dir(helperOutput)
         environment("JAVA_HOME", System.getProperty("java.home"))
