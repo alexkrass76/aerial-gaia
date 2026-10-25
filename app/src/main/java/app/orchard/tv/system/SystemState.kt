@@ -10,9 +10,7 @@ import android.media.tv.TvInputInfo
 import android.media.tv.TvInputManager
 import android.net.ConnectivityManager
 import android.net.Network
-import android.net.NetworkCapabilities
 import android.net.Uri
-import android.net.wifi.WifiManager
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
@@ -22,8 +20,6 @@ import app.orchard.tv.BuildConfig
 import app.orchard.tv.R
 import app.orchard.tv.guard.HomeGuardService
 
-enum class NetKind { Wifi, Ethernet, Offline }
-
 /** The network apps use by default. ConnectivityManager.activeNetwork only exists from Android 6.0. */
 fun ConnectivityManager.currentNetwork(): Network? {
     if (Build.VERSION.SDK_INT >= 23) return activeNetwork
@@ -32,8 +28,6 @@ fun ConnectivityManager.currentNetwork(): Network? {
     @Suppress("DEPRECATION")
     return allNetworks.firstOrNull { getNetworkInfo(it)?.type == type }
 }
-
-data class NetworkStatus(val kind: NetKind = NetKind.Offline, val name: String? = null, val level: Float = 1f, val vpn: Boolean = false)
 
 data class VolumeStatus(val level: Int = 0, val max: Int = 100, val muted: Boolean = false) {
     val fraction: Float get() = if (max == 0) 0f else level / max.toFloat()
@@ -55,39 +49,7 @@ enum class HomeStatus { Default, Guarded, NotDefault }
 
 object SystemProbe {
 
-    fun network(context: Context): NetworkStatus {
-        val cm = context.getSystemService<ConnectivityManager>() ?: return NetworkStatus()
-        val activeCaps = cm.getNetworkCapabilities(cm.currentNetwork() ?: return NetworkStatus()) ?: return NetworkStatus()
-        val vpn = activeCaps.hasTransport(NetworkCapabilities.TRANSPORT_VPN)
-        // Some VPNs omit the underlying transport. Keep Wi-Fi/Ethernet separate from VPN state.
-        val underlying = if (vpn &&
-            !activeCaps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) &&
-            !activeCaps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)) {
-            cm.allNetworks.mapNotNull(cm::getNetworkCapabilities)
-                .firstOrNull { !it.hasTransport(NetworkCapabilities.TRANSPORT_VPN) &&
-                    it.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
-                    (it.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) ||
-                        it.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)) }
-        } else null
-        val caps = underlying ?: activeCaps
-        return when {
-            caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) -> NetworkStatus(NetKind.Ethernet, vpn = vpn)
-            caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) -> {
-                val wm = context.applicationContext.getSystemService<WifiManager>()
-                @Suppress("DEPRECATION")
-                val info = wm?.connectionInfo
-                val ssid = info?.ssid?.trim('"')?.takeUnless { it.isBlank() || it == WifiManager.UNKNOWN_SSID.trim('<', '>') || it == "<unknown ssid>" }
-                val level = if (info == null) 1f else if (Build.VERSION.SDK_INT >= 30) {
-                    wm.calculateSignalLevel(info.rssi) / wm.maxSignalLevel.coerceAtLeast(1).toFloat()
-                } else {
-                    @Suppress("DEPRECATION")
-                    WifiManager.calculateSignalLevel(info.rssi, 4) / 3f
-                }
-                NetworkStatus(NetKind.Wifi, ssid, level, vpn)
-            }
-            else -> NetworkStatus(NetKind.Ethernet, vpn = vpn)
-        }
-    }
+    fun network(context: Context): NetworkStatus = NetworkProbe.read(context)
 
     fun volume(context: Context): VolumeStatus {
         val am = context.getSystemService<AudioManager>() ?: return VolumeStatus()
@@ -219,7 +181,11 @@ object SystemProbe {
         listOfNotNull(xgimiSettingsIntent(context, XGIMI_NETWORK_PAGE)) + networkSettingsActivityIntents(context, ethernet)
 
     private fun networkSettingsActivityIntents(context: Context, ethernet: Boolean = false): List<Intent> {
-        val wired = listOfNotNull(Intent("com.xiaomi.mitv.settings.ETHERNET_SETTINGS").setPackage("com.xiaomi.mitv.settings").takeIf { ethernet })
+        // Gaia/CVTE publishes a distinct wired page; never send Ethernet to Wi-Fi when it exists.
+        val wired = if (ethernet) listOf(
+            Intent("com.cvte.intent.action.WIRED_NETWORK").setPackage("com.cvte.settings"),
+            Intent("com.xiaomi.mitv.settings.ETHERNET_SETTINGS").setPackage("com.xiaomi.mitv.settings"),
+        ) else emptyList()
         return allResolvable(
             context,
             *wired.toTypedArray(),
@@ -233,6 +199,23 @@ object SystemProbe {
             // TCL tcl_m7642 (Android 9) answers neither Wi-Fi nor settings actions (issue #15).
             Intent(Intent.ACTION_MAIN).setComponent(ComponentName("com.tcl.settings", "com.tcl.settings.ui.MainActivity")),
             WHALEY_SETTINGS,
+        )
+    }
+
+    /** Pages for the Bluetooth button, best first; allResolvable falls back to the last one. */
+    fun bluetoothSettingsIntents(context: Context): List<Intent> {
+        // The ATV accessories page needs BLUETOOTH_CONNECT on Android 12+, which a settings
+        // shortcut does not hold (Permission Denial on the Android 12 TV emulator): below S only.
+        val accessories = if (Build.VERSION.SDK_INT < 31) listOf(
+            Intent(Intent.ACTION_MAIN).setComponent(ComponentName("com.android.tv.settings", "com.android.tv.settings.accessories.AddAccessoryActivity")),
+        ) else emptyList()
+        return allResolvable(
+            context,
+            // Opens fine where the Wi-Fi page is killed (issue #331, MiTV-ANSP0).
+            Intent(Intent.ACTION_MAIN).setComponent(ComponentName("com.xiaomi.mitv.settings", "com.xiaomi.mitv.settings.bluetooth.MitvBluetoothActivity")),
+            *accessories.toTypedArray(),
+            Intent(Settings.ACTION_BLUETOOTH_SETTINGS),
+            Intent(Settings.ACTION_SETTINGS),
         )
     }
 

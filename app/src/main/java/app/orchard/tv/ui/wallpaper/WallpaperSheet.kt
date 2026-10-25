@@ -60,9 +60,13 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import app.orchard.tv.R
+import app.orchard.tv.apps.AppDetails
 import app.orchard.tv.settings.AerialSettings
+import app.orchard.tv.settings.AppContentMode
+import app.orchard.tv.settings.NameMode
 import app.orchard.tv.settings.FocusStyle
 import app.orchard.tv.settings.UiSounds
+import app.orchard.tv.settings.Effects
 import app.orchard.tv.system.Sounds
 import app.orchard.tv.ui.components.Pressable
 import app.orchard.tv.ui.components.consumeTaps
@@ -103,6 +107,8 @@ fun WallpaperSheet(
     onPin: (on: Boolean) -> Unit,
 ) {
     val context = LocalContext.current
+    var showAdbDialog by remember { mutableStateOf(false) }
+    if (showAdbDialog) AdbAccessDialog(onConfirm = { AerialSettings.chooseAdbAccess(true); showAdbDialog = false }, onDismiss = { showAdbDialog = false })
     var phoneUrl by remember { mutableStateOf<String?>(null) }
     var qr by remember { mutableStateOf<ImageBitmap?>(null) }
 
@@ -121,7 +127,7 @@ fun WallpaperSheet(
         }
     }
 
-    AnimatedVisibility(visible = visible, enter = fadeIn(tween(220)), exit = fadeOut(tween(180)), modifier = Modifier.fillMaxSize()) {
+    AnimatedVisibility(visible = visible, enter = fadeIn(tween(220, easing = Motion.EaseOut)), exit = fadeOut(tween(180, easing = Motion.EaseOut)), modifier = Modifier.fillMaxSize()) {
         // A tap above the sheet closes it, back to Control Center as Back does.
         Box(Modifier.fillMaxSize().dismissOnTap(onDismiss).background(Color.Black.copy(alpha = 0.25f)))
     }
@@ -129,8 +135,8 @@ fun WallpaperSheet(
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
         AnimatedVisibility(
             visible = visible,
-            enter = fadeIn(tween(200)) + slideInVertically(tween(380, easing = Motion.Drawer)) { it / 3 },
-            exit = fadeOut(tween(160)) + slideOutVertically(tween(200, easing = Motion.EaseOut)) { it / 4 },
+            enter = fadeIn(tween(200, easing = Motion.EaseOut)) + slideInVertically(tween(380, easing = Motion.Drawer)) { it / 3 },
+            exit = fadeOut(tween(160, easing = Motion.EaseOut)) + slideOutVertically(tween(200, easing = Motion.EaseOut)) { it / 4 },
         ) {
             Row(
                 Modifier
@@ -175,9 +181,22 @@ fun WallpaperSheet(
                             AerialSettings.homePlate, AerialSettings::chooseHomePlate,
                         )
                         Choices(
+                            R.string.st_app_content, stringResource(R.string.st_app_content_hint), note,
+                            listOf(
+                                AppContentMode.OnUp to R.string.st_app_content_on,
+                                AppContentMode.Off to R.string.st_app_content_off,
+                                AppContentMode.Always to R.string.st_app_content_always,
+                            ),
+                            AerialSettings.appContentMode, AerialSettings::chooseAppContentMode,
+                        )
+                        Choices(
                             R.string.st_names, stringResource(R.string.st_names_hint), note,
-                            listOf(false to R.string.st_names_focused, true to R.string.st_names_all),
-                            AerialSettings.showAllNames, AerialSettings::chooseShowAllNames,
+                            listOf(
+                                NameMode.Focused to R.string.st_names_focused,
+                                NameMode.All to R.string.st_names_all,
+                                NameMode.HeroTitle to R.string.st_names_hero,
+                            ),
+                            AerialSettings.nameMode, AerialSettings::chooseNameMode,
                         )
                         // Apps taken off Home are kept with the rest of how Home looks.
                         SettingRow(R.string.st_hidden_apps, stringResource(R.string.st_hidden_apps_hint), note) {
@@ -216,6 +235,16 @@ fun WallpaperSheet(
                             note,
                             listOf(UiSounds.Tv to R.string.st_sounds_tv, UiSounds.Aerial to R.string.st_sounds_aerial, UiSounds.Off to R.string.st_off),
                             AerialSettings.uiSounds, { AerialSettings.chooseUiSounds(it); Sounds.prepare() },
+                        )
+                        Choices(
+                            R.string.st_effects,
+                            stringResource(
+                                if (AerialSettings.effects == Effects.Auto && AerialSettings.lowEnd) R.string.st_effects_auto_lite_hint
+                                else R.string.st_effects_hint,
+                            ),
+                            note,
+                            listOf(Effects.Auto to R.string.st_effects_auto, Effects.Full to R.string.st_effects_full, Effects.Lite to R.string.st_effects_lite),
+                            AerialSettings.effects, AerialSettings::chooseEffects,
                         )
                     }
 
@@ -270,6 +299,20 @@ fun WallpaperSheet(
                         SettingRow(R.string.st_pin, null, note, first = true) {
                             // The last row that takes focus: bring the note under it into view too.
                             PinChoice(onPin, onFocused = { scope.launch { scroll.animateScrollTo(scroll.maxValue) } })
+                        }
+                    }
+                    // Only where Aerial's own App Info is in use, which is where this is needed.
+                    if (remember { context.packageName == "app.orchard.tv.gaia" || !AppDetails.hasSystemScreen(context) }) {
+                        Spacer(Modifier.height(22.dp))
+                        SectionTitle(R.string.wp_advanced)
+                        Group(stringResource(R.string.st_adb_hint)) { note ->
+                            Choices(
+                                R.string.st_adb, null, note,
+                                listOf(false to R.string.st_adb_off, true to R.string.st_adb_on),
+                                AerialSettings.adbAccess,
+                                { on -> if (on) showAdbDialog = true else AerialSettings.chooseAdbAccess(false) },
+                                first = true,
+                            )
                         }
                     }
                     Spacer(Modifier.height(24.dp))

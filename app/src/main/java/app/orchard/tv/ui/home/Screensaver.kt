@@ -51,6 +51,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import app.orchard.tv.apps.AppEntry
 import app.orchard.tv.system.DiagLog
+import app.orchard.tv.ui.components.Dissolve
 import app.orchard.tv.ui.theme.LocalReducedMotion
 import app.orchard.tv.ui.theme.Motion
 import app.orchard.tv.ui.theme.Type
@@ -182,8 +183,12 @@ sealed interface SaverCarry {
     }
 }
 
-/** What a wallpaper's picture is, for the screensaver: where it was taken, else its name. */
-fun stillCaption(wp: app.orchard.tv.wallpaper.Wallpaper): String? = wp.caption?.takeIf { it.isNotBlank() } ?: wp.title
+/** What a wallpaper's picture is, for the screensaver: where it was taken, else its name. The
+ * owner's own photos carry no information for the owner, so they stay unlabeled (issue #117). */
+fun stillCaption(wp: app.orchard.tv.wallpaper.Wallpaper): String? = when (wp.kind) {
+    app.orchard.tv.wallpaper.WallpaperKind.Photo -> null
+    else -> wp.caption?.takeIf { it.isNotBlank() } ?: wp.title
+}
 
 /** How long one slow push in (or back out) of a still wallpaper takes. */
 private const val DRAW_IN_MS = 60_000
@@ -262,7 +267,8 @@ private fun Labels(caption: String?, now: LocalDateTime, showTime: Boolean = tru
  * here when the screensaver carries on its film, and from the left it crossed the whole screen to
  * the right, a long slide for a moment that should be quiet (issue #357).
  */
-internal val SaverClockStyle = Type.LargeTitle.copy(fontSize = Type.LargeTitle.fontSize * 1.3f, color = Color.White.copy(alpha = 0.92f))
+// The same style as the small clock, which grows into it, so the hand-off does not jump.
+internal val SaverClockStyle = Type.SmallClock.copy(fontSize = Type.LargeTitle.fontSize * 1.3f, color = Color.White.copy(alpha = 0.92f))
 internal val SaverClockTop = 40.dp
 internal val SaverClockSide = 56.dp
 
@@ -489,7 +495,8 @@ private fun PhotoSaver(
         steps.collect { slide += it }
     }
 
-    Crossfade(targetState = image, animationSpec = tween(2000, easing = LinearEasing), label = "photo") { current ->
+    // Each photo fades in over the last, which stays whole beneath it (no dip to black mid-way).
+    Dissolve(targetState = image, durationMs = 2000, easing = LinearEasing, label = "photo") { current ->
         if (current != null) {
             // Ken Burns: a slow push in, alternating direction slide to slide.
             val push = remember { Animatable(0f) }
@@ -525,16 +532,19 @@ private fun ClockSaver(apps: List<AppEntry>, now: LocalDateTime) {
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val w = maxWidth
         val h = maxHeight
-        Crossfade(targetState = scene, animationSpec = tween(2400, easing = Motion.EaseInOut), label = "clock-scene") { s ->
-            Box(Modifier.fillMaxSize()) {
-                s.light?.let { light ->
-                    Canvas(Modifier.fillMaxSize()) {
-                        drawImage(light, dstSize = IntSize(size.width.roundToInt(), size.height.roundToInt()), filterQuality = FilterQuality.Low, alpha = 0.75f)
-                    }
+        // The light apart from the clock: with a wallpaper it is the same picture every minute, and
+        // crossfaded against itself it dimmed for two seconds each time the clock moved. Opaque
+        // (black under it), so a new one can fade in over the old.
+        Dissolve(targetState = scene.light, durationMs = 2400, easing = Motion.EaseInOut, modifier = Modifier.fillMaxSize(), label = "clock-light") { light ->
+            Canvas(Modifier.fillMaxSize()) {
+                drawRect(Color.Black)
+                if (light != null) {
+                    drawImage(light, dstSize = IntSize(size.width.roundToInt(), size.height.roundToInt()), filterQuality = FilterQuality.Low, alpha = 0.75f)
                 }
-                // Information is revealed by the shared directional-key overlay.
             }
         }
+        // Gaia displays the clock only in the shared on-demand information overlay.
+
     }
 }
 

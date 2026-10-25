@@ -87,7 +87,7 @@ class TaskSwitcherActivity : ComponentActivity() {
                                 val row = rows.getJSONObject(index)
                                 runCatching {
                                     val info = packageManager.getApplicationInfo(row.getString("package"), 0)
-                                    val app = artwork[info.packageName] ?: AppEntry(
+                                    val app = artwork[info.packageName]?.takeUnless { it.art.placeholder } ?: AppEntry(
                                         packageName = info.packageName,
                                         label = info.loadLabel(packageManager).toString(),
                                         component = ComponentName(info.packageName, ""),

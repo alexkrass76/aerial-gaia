@@ -190,3 +190,133 @@ adb shell content call --uri content://app.orchard.tv.gaia.tasks --method set_au
 
 This leaves a running helper alive until it is stopped or the TV reboots.
 The feature is opt-in; see the task bridge guide for setup and current limitations.
+
+
+## Upstream 1.48 integration (1.48-gaia.11)
+
+Merged v1.48 with staged app artwork loading, background font/tile preparation,
+Control Center warmup, memory-pressure cache trimming, animation and phone-page
+fixes, and the upstream guard compatibility changes. Gaia initializes an unset
+effects preference to Full, preserving the existing dock appearance on low-memory
+TVs; explicit Auto and Lite choices remain available and are never overwritten.
+
+Preserved Direct Boot HOME/COMMON_HOME, CVTE HDMI routing and input-player guard
+exclusion, separate package/signing identity, VPN badge, physical LAN address for
+phone settings, weather localization, and on-demand unboxed screensaver info.
+Task switching retains its shell helper and dock tiles; temporary upstream artwork
+placeholders fall back to app icons instead of remaining blank in the switcher.
+
+Validation: signed standard release built successfully and 45 unit tests passed.
+Installed in place; launched before speed compilation. On-device diagnostics
+confirmed Full/lite=false on the 958 MiB low-RAM device. Home, compact Control
+Center, weather, VPN badge and physical-LAN phone URL were inspected. Task tiles
+retained their dock lighting; OK resumed kino.watch and Home returned to Gaia.
+No AndroidRuntime errors were present in the sampled log. Physical double Home
+acceptance, a new reboot, HDMI signal and AirPlay remain unverified for this build.
+The first interactive frame sample is not a controlled before/after benchmark;
+no device-specific performance improvement is claimed yet.
+
+
+## Selected community features (1.48-gaia.12)
+
+Adapted upstream PRs [#436](https://github.com/pengchujin/aerial-tv/pull/436),
+[#400](https://github.com/pengchujin/aerial-tv/pull/400),
+[#401](https://github.com/pengchujin/aerial-tv/pull/401),
+[#364](https://github.com/pengchujin/aerial-tv/pull/364) (including #296/#348), and
+[#356](https://github.com/pengchujin/aerial-tv/pull/356) (including #233).
+The port takes their app changes, not upstream installation scripts.
+
+- Wi-Fi, Ethernet and VPN are independent statuses. A tunnel indicator does not
+  guarantee Internet access. Physical LAN selection for the phone page is unchanged.
+- Bluetooth opens the firmware settings via resolved intents; the checked Gaia
+  firmware resolves the standard Bluetooth action to CVTE Settings.
+- Personal photos no longer receive the generic photo caption. Gaia's directional
+  information overlay, 10-second timeout, weather and Back-only exit remain.
+- Optional app content shelf: Off by default on Gaia; On Up / Always available in
+  Personalize. Requires READ_TV_LISTINGS and a provider on Android 8+. Apps without
+  published programs keep the normal wallpaper. Card images are capped at 4 MiB,
+  backdrops at two pairs; caches are released on memory pressure. Programs remain
+  scoped to the publishing app when opened. Existing dock focus visuals are kept.
+- Optional App Permissions: Off by default. Gaia uses its own app-info sheet from
+  the tile menu; exported settings aliases activate only for missing system pages.
+  The aliases use the class namespace, and task affinity uses the Gaia application ID.
+  Operations reuse LocalAdbTransport, require UID 2000, fail closed on AUTH and never
+  generate keys or modify ADB configuration. Only fixed commands with validated
+  names run, for user 0, gated by the preference and parental PIN.
+- System/updated-system apps, Aerial, CVTE/Droidlogic, WireGuard and AirPlay services
+  are protected from app-management mutations. Clear data requires a second press;
+  it really removes app accounts/data, not just cache. User apps should be tested
+  with a disposable package before destructive operations are considered verified.
+
+Disable App Content and App Permissions in Personalize to turn these additions off.
+Neither changes the task helper autostart setting. No system packages are disabled,
+removed or re-enabled by this update. Direct Boot/COMMON_HOME, native CVTE inputs,
+Guard's TV-player exclusion, signing identity and task helper remain unchanged.
+
+Validation: clean standard release build and 83 unit tests passed. Installed in place
+with the existing signature and speed-compiled after launch. The task helper reattached.
+Bluetooth opened CVTE Settings and the paired remote remained connected; app info
+rendered for Kinopoisk. On-device network summary showed Wi-Fi and VPN connected,
+Ethernet disconnected. No runtime crashes were found in the sampled log.
+
+For this TV, READ_TV_LISTINGS was granted (absent before this update) and the shelf was
+set to On Up. Kinopoisk, kino.watch, VK Video and Spotify published previews. kino.watch
+cards and channel tabs rendered, OK opened its InfoActivity, and Home returned to Gaia.
+A single post-use measurement was about 83 MiB PSS, excluding the task helper; this is
+not a long-term memory benchmark. App management remains off; permission mutation,
+force stop and data clearing have not been exercised on user apps. The owner confirmed physical remote acceptance: double Home, task selection, ordinary
+Home, shelf navigation and Back-to-tiles. Boot/HDMI signal/AirPlay have not been
+retested in this round.
+
+To revoke the newly added shelf permission after turning App Content off:
+
+```sh
+adb shell pm revoke app.orchard.tv.gaia android.permission.READ_TV_LISTINGS
+```
+
+The previous APK was saved locally before installation. No reboot or package removal
+was performed. Reinstalling an older version may require a build with a higher version
+code; do not uninstall or clear data to bypass a downgrade restriction.
+
+
+## Unified settings, first stage (1.48-gaia.13)
+
+The Gaia Control Center gear opens an in-launcher settings surface with Network,
+Bluetooth, Apps and About this TV. Other application IDs retain upstream routing.
+Network displays independent transport/VPN states and the physical LAN IP. Memory,
+storage, versions and enabled installed apps are read off the UI thread and refreshed
+on resume. No persistent polling or shell commands are introduced for this screen.
+
+App Info reuses the existing opt-in management and protected-package policy; Back
+returns to the application list and restores the selected row. Settings entry retains
+the parental PIN gate. No privileges or permissions are added by this version.
+
+Wi-Fi setup, Bluetooth pairing and Ethernet configuration still open firmware pages.
+CVTE wired settings are resolved through com.cvte.intent.action.WIRED_NETWORK;
+other firmware keeps existing fallbacks. A clearly labelled TV settings entry retains
+access to picture, sound and unported controls. The screen is not yet a replacement
+for CVTE services and does not disable or remove them. WireGuard opens its own app;
+tunnel configuration and toggling are not implemented in Aerial.
+
+Validation: release build and all 83 unit tests passed. Installed over the previous
+version with the existing signature and speed-compiled. Network, Bluetooth, installed
+apps and About pages rendered on the TV. Ethernet opened the native wired page;
+Back restored the network page and focus. App Info opened for a protected component,
+and Back restored the selected app. Bluetooth opened the native page with the remote
+still connected. The task helper reported connected with autostart enabled; no
+AndroidRuntime errors appeared in the sampled log.
+
+Injected Home returned from native Bluetooth to the still-open Gaia settings page,
+rather than dismissing it to the desktop. Physical Home/double Home and remote
+navigation acceptance remain pending. No connection settings, permissions or app
+state were changed during this validation. Boot, HDMI signal and AirPlay were not
+retested; this version does not change their implementations.
+
+
+## Network policy correction (1.48-gaia.14)
+
+The general cleartext HTTP allowance introduced for shelf artwork is removed.
+The policy matches gaia.10: only the pre-existing named weather/location and
+screensaver exceptions remain. HTTPS artwork is unaffected; plain-HTTP media-server
+artwork outside those exceptions can fail to load. No TLS verification is bypassed.
+This changes neither the local phone-settings server nor the ADB task transport.

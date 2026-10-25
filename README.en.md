@@ -1,10 +1,10 @@
 # Aerial Gaia
 
-GaiaOS / CVTE port of [Aerial by pengchujin](https://github.com/pengchujin/aerial-tv), based on v1.47. MIT license retained.
+GaiaOS / CVTE port of [Aerial by pengchujin](https://github.com/pengchujin/aerial-tv), based on v1.48. MIT license retained.
 
 [Russian README](README.md) · [Installation and rollback (Russian)](docs/GAIAOS.md) · [Porting notes](docs/devices/gaiaos-t950s-be30ae.md)
 
-Verified build: **1.47-gaia.10**, versionCode 60, package `app.orchard.tv.gaia`.
+Current build: **1.48-gaia.14**, versionCode 64, package `app.orchard.tv.gaia`.
 
 - Styled, static Direct Boot card uses framework Canvas and APK resources only, waiting for unlock before opening the regular UI.
 - Upstream v1.47 updates phone settings, app/folder management, Home Guard, remote controls and screensavers.
@@ -48,3 +48,22 @@ without root or system boot-script edits. It defaults off: see
 device above; availability followed Wi-Fi connection after reboot. Helper memory
 was approximately 44 MiB PSS. Other devices and offline startup are unverified.
 HDMI and AirPlay were not retested in this release cycle.
+
+
+## Update 1.48-gaia.12
+
+Selected upstream PRs add independent Wi-Fi/Ethernet/VPN status, a Bluetooth shortcut,
+app details and opt-in permission management, an optional content shelf, and no generic
+caption on personal photos. Gaia keeps Direct Boot, CVTE HDMI, task switching and its
+on-demand screensaver. Shelf image caches are reduced for the 1 GB TV; app management
+protects system components, VPN and AirPlay. See [porting and validation notes](docs/GAIAOS.md#selected-community-features-148-gaia12).
+Included in release 1.48-gaia.14.
+
+
+## Update 1.48-gaia.13
+
+The Control Center gear now opens Gaia settings: network status, Bluetooth,
+installed apps and TV information. Wi-Fi connection, Bluetooth pairing and unported
+picture/sound options still use the firmware pages. The existing permission and
+protected-package controls are reused. CVTE services, Direct Boot and HDMI remain
+unchanged. See [scope and validation](docs/GAIAOS.md#unified-settings-first-stage-148-gaia13).
