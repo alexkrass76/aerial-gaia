@@ -28,8 +28,10 @@ import app.orchard.tv.Overlay
 import app.orchard.tv.R
 import app.orchard.tv.system.*
 import app.orchard.tv.ui.components.Pressable
+import app.orchard.tv.ui.components.PackageIcon
 import app.orchard.tv.ui.components.liquidGlass
 import app.orchard.tv.ui.control.NetworkSummary
+import app.orchard.tv.ui.control.VolumeRow
 import app.orchard.tv.ui.theme.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -54,10 +56,11 @@ fun GaiaSettingsScreen(state: Overlay.GaiaSettings, vm: HomeViewModel, onOpen: (
         snapshot = result.getOrNull()
         failed = result.isFailure
         vm.refreshNetwork()
+        vm.refreshVolume()
     }
     fun page(name: String) { vm.overlay = Overlay.GaiaSettings(name) }
     fun back() {
-        vm.overlay = if (state.page == "main") Overlay.ControlCenter() else Overlay.GaiaSettings()
+        vm.overlay = if (state.page == "main") Overlay.ControlCenter() else if (state.page in listOf("datetime", "keyboard", "display")) Overlay.GaiaSettings("advanced") else Overlay.GaiaSettings()
     }
     fun open(intents: List<Intent>) {
         vm.whenUnlocked {
@@ -70,8 +73,13 @@ fun GaiaSettingsScreen(state: Overlay.GaiaSettings, vm: HomeViewModel, onOpen: (
     LaunchedEffect(state.page) { withFrameNanos { }; runCatching { first.requestFocus() } }
     val title = when (state.page) {
         "network" -> R.string.cc_network
+        "sound" -> R.string.gs_sound
         "bluetooth" -> R.string.cc_bluetooth
         "apps" -> R.string.gs_apps
+        "datetime" -> R.string.gs_date
+        "keyboard" -> R.string.gs_keyboard
+        "display" -> R.string.gs_display
+        "advanced" -> R.string.gs_preferences
         "system" -> R.string.gs_system
         else -> R.string.gs_title
     }
@@ -86,7 +94,11 @@ fun GaiaSettingsScreen(state: Overlay.GaiaSettings, vm: HomeViewModel, onOpen: (
             Spacer(Modifier.height(16.dp))
             if (state.page == "apps") {
                 if (snapshot == null) BasicText(stringResource(if (failed) R.string.unavailable else R.string.tasks_loading), style = Type.Body)
-                val list = snapshot?.apps.orEmpty()
+                SettingRow(Glyph.Gear, stringResource(if (vm.settingsShowSystemApps) R.string.gs_hide_system else R.string.gs_show_system), onClick = {
+                    vm.settingsShowSystemApps = !vm.settingsShowSystemApps
+                })
+                Spacer(Modifier.height(8.dp))
+                val list = snapshot?.apps.orEmpty().filter { vm.settingsShowSystemApps || !it.system }
                 val listState = androidx.compose.foundation.lazy.rememberLazyListState()
                 val selected = remember(state.selectedApp) { FocusRequester() }
                 LaunchedEffect(list, state.selectedApp) {
@@ -99,7 +111,7 @@ fun GaiaSettingsScreen(state: Overlay.GaiaSettings, vm: HomeViewModel, onOpen: (
                 }
                 LazyColumn(state = listState, modifier = Modifier.fillMaxWidth().weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     items(list, key = { it.pkg }) { app ->
-                        SettingRow(Glyph.Bag, app.name,
+                        SettingRow(Glyph.Bag, app.name, packageName = app.pkg,
                             detail = if (app.manageable) app.pkg else stringResource(R.string.gs_protected),
                             first = selected.takeIf { app.pkg == state.selectedApp },
                             onClick = { vm.overlay = Overlay.AppInfo(app.pkg, fromSettings = true) })
@@ -110,17 +122,34 @@ fun GaiaSettingsScreen(state: Overlay.GaiaSettings, vm: HomeViewModel, onOpen: (
                     "network" -> {
                         NetworkSummary(vm.network)
                         InfoRow(stringResource(R.string.gs_lan), snapshot?.lan ?: stringResource(R.string.net_offline))
-                        BasicText(stringResource(R.string.gs_network_hint), style = Type.Caption)
-                        SettingRow(Glyph.Wifi, stringResource(R.string.gs_connect_wifi), detail = stringResource(R.string.gs_firmware_page), onClick = { open(SystemProbe.networkSettingsIntents(context)) })
-                        SettingRow(Glyph.Ethernet, stringResource(R.string.net_ethernet), detail = stringResource(R.string.gs_firmware_page), onClick = { open(SystemProbe.networkSettingsIntents(context, ethernet = true)) })
+                        BasicText(stringResource(R.string.gs_not_ported), style = Type.Caption)
                         val vpn = remember { context.packageManager.getLeanbackLaunchIntentForPackage("com.wireguard.android") ?: context.packageManager.getLaunchIntentForPackage("com.wireguard.android") }
                         if (vpn != null) SettingRow(Glyph.Shield, stringResource(R.string.gs_open_vpn), onClick = { open(listOf(vpn)) })
                     }
+                    "sound" -> {
+                        BasicText(stringResource(R.string.cc_volume), style = Type.Headline)
+                        VolumeRow(vm)
+                        BasicText(stringResource(R.string.gs_volume_hint), style = Type.Caption)
+                        SettingRow(if (vm.volume.muted) Glyph.SpeakerMuted else Glyph.Speaker,
+                            stringResource(if (vm.volume.muted) R.string.gs_unmute else R.string.gs_mute),
+                            onClick = { vm.whenUnlocked { vm.toggleMute() } })
+                        SettingRow(Glyph.Bluetooth, stringResource(R.string.gs_devices), onClick = { page("bluetooth") })
+                        DevicePreferences("sound", vm, revision)
+                    }
                     "bluetooth" -> {
                         InfoRow(stringResource(R.string.cc_bluetooth), stringResource(when(snapshot?.bluetooth) { true -> R.string.perm_on; false -> R.string.perm_off; null -> R.string.unavailable }))
-                        BasicText(stringResource(R.string.gs_bluetooth_hint), style = Type.Body)
-                        SettingRow(Glyph.Bluetooth, stringResource(R.string.gs_devices), detail = stringResource(R.string.gs_firmware_page), onClick = { open(SystemProbe.bluetoothSettingsIntents(context)) })
+                        BasicText(stringResource(R.string.gs_not_ported), style = Type.Body)
                     }
+                    "advanced" -> {
+                        InfoRow(stringResource(R.string.gs_date), android.text.format.DateFormat.getDateFormat(context).format(java.util.Date()))
+                        InfoRow(stringResource(R.string.gs_timezone), java.util.TimeZone.getDefault().id)
+                        InfoRow(stringResource(R.string.gs_language), java.util.Locale.getDefault().displayName)
+                        SettingRow(Glyph.Gear, stringResource(R.string.gs_date), onClick = { page("datetime") })
+                        SettingRow(Glyph.Gear, stringResource(R.string.gs_keyboard), onClick = { page("keyboard") })
+                        SettingRow(Glyph.Gear, stringResource(R.string.gs_display), onClick = { page("display") })
+                    }
+                    "datetime", "keyboard", "display" -> DevicePreferences(state.page, vm, revision)
+
                     "system" -> {
                         val info = snapshot
                         if (info == null) BasicText(stringResource(if (failed) R.string.unavailable else R.string.tasks_loading), style = Type.Body)
@@ -131,14 +160,14 @@ fun GaiaSettingsScreen(state: Overlay.GaiaSettings, vm: HomeViewModel, onOpen: (
                             InfoRow(stringResource(R.string.gs_memory), stringResource(R.string.gs_free_total, Formatter.formatFileSize(context, info.memoryAvailable), Formatter.formatFileSize(context, info.memoryTotal)))
                             InfoRow(stringResource(R.string.gs_storage), stringResource(R.string.gs_free_total, Formatter.formatFileSize(context, info.storageAvailable), Formatter.formatFileSize(context, info.storageTotal)))
                         }
-                        SettingRow(Glyph.Gear, stringResource(R.string.gs_firmware), onClick = { open(listOf(SystemProbe.settingsIntent(context))) })
                     }
                     else -> {
                         SettingRow(Glyph.Wifi, stringResource(R.string.cc_network), detail = stringResource(R.string.gs_network_detail), onClick = { page("network") })
                         SettingRow(Glyph.Bluetooth, stringResource(R.string.cc_bluetooth), detail = stringResource(R.string.gs_bluetooth_detail), onClick = { page("bluetooth") })
+                        SettingRow(Glyph.Speaker, stringResource(R.string.gs_sound), detail = stringResource(R.string.gs_sound_detail), onClick = { page("sound") })
                         SettingRow(Glyph.Bag, stringResource(R.string.gs_apps), detail = stringResource(R.string.gs_apps_detail), onClick = { page("apps") })
+                        SettingRow(Glyph.Gear, stringResource(R.string.gs_preferences), detail = stringResource(R.string.gs_preferences_detail), onClick = { page("advanced") })
                         SettingRow(Glyph.Info, stringResource(R.string.gs_system), detail = stringResource(R.string.gs_system_detail), onClick = { page("system") })
-                        SettingRow(Glyph.Gear, stringResource(R.string.gs_firmware), detail = stringResource(R.string.gs_firmware_detail), onClick = { open(listOf(SystemProbe.settingsIntent(context))) })
                     }
                 }
             }
@@ -147,11 +176,11 @@ fun GaiaSettingsScreen(state: Overlay.GaiaSettings, vm: HomeViewModel, onOpen: (
 }
 
 @Composable
-private fun SettingRow(glyph: Glyph, title: String, detail: String? = null, first: FocusRequester? = null, modifier: Modifier = Modifier.fillMaxWidth(), onClick: () -> Unit) {
+internal fun SettingRow(glyph: Glyph, title: String, detail: String? = null, first: FocusRequester? = null, modifier: Modifier = Modifier.fillMaxWidth(), packageName: String? = null, onClick: () -> Unit) {
     Pressable(onClick = onClick, focusRequester = first, focusedScale = 1.02f, modifier = modifier) { state ->
         val foreground = if (state.focused) Palette.OnFocus else Palette.Label
         Row(Modifier.fillMaxWidth().background(if (state.focused) Palette.Focus else Palette.Fill, androidx.compose.foundation.shape.RoundedCornerShape(14.dp)).padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-            GlyphIcon(glyph, foreground, 22.dp)
+            if (packageName != null) PackageIcon(packageName) else GlyphIcon(glyph, foreground, 22.dp)
             Spacer(Modifier.width(14.dp))
             Column(Modifier.weight(1f)) {
                 BasicText(title, style = Type.Body.copy(color = foreground), maxLines = 1, overflow = TextOverflow.Ellipsis)

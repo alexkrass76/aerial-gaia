@@ -324,6 +324,10 @@ object SystemProbe {
         return intent.takeIf { runCatching { pm.resolveService(it, 0) }.getOrNull() != null }
     }
 
+    fun soundSettingsIntent(context: Context): Intent = firstResolvable(
+        context, Intent(Settings.ACTION_SOUND_SETTINGS), settingsIntent(context),
+    )
+
     private fun firstResolvable(context: Context, vararg intents: Intent): Intent {
         val pm = context.packageManager
         // Not Intent.resolveActivity: it returns an explicit component unchecked, so Xiaomi's

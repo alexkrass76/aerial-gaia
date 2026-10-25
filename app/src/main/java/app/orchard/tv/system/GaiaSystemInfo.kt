@@ -2,6 +2,7 @@ package app.orchard.tv.system
 
 import android.app.ActivityManager
 import android.content.Context
+import android.content.pm.ApplicationInfo
 import android.net.ConnectivityManager
 import android.os.Build
 import android.os.StatFs
@@ -24,7 +25,8 @@ internal data class GaiaSystemInfo(
             val collator = Collator.getInstance()
             val apps = pm.getInstalledApplications(0).filter { it.enabled }.map {
                 SettingsApp(it.packageName, runCatching { it.loadLabel(pm).toString() }.getOrDefault(it.packageName),
-                    AdbShell.canManage(context, it.packageName))
+                    AdbShell.canManage(context, it.packageName),
+                    it.flags and (ApplicationInfo.FLAG_SYSTEM or ApplicationInfo.FLAG_UPDATED_SYSTEM_APP) != 0)
             }.sortedWith { a, b -> collator.compare(a.name, b.name) }
             return GaiaSystemInfo(Build.MODEL, Build.VERSION.RELEASE,
                 pm.getPackageInfo(context.packageName, 0).versionName.orEmpty(),
@@ -34,4 +36,4 @@ internal data class GaiaSystemInfo(
         }
     }
 }
-internal data class SettingsApp(val pkg: String, val name: String, val manageable: Boolean)
+internal data class SettingsApp(val pkg: String, val name: String, val manageable: Boolean, val system: Boolean)

@@ -85,6 +85,7 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
     var loaded by mutableStateOf(false); private set
 
     var overlay by mutableStateOf<Overlay>(Overlay.None)
+    var settingsShowSystemApps by mutableStateOf(false)
     var movingKey by mutableStateOf<String?>(null); private set
 
     var network by mutableStateOf(NetworkStatus()); private set

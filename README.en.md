@@ -67,3 +67,17 @@ installed apps and TV information. Wi-Fi connection, Bluetooth pairing and unpor
 picture/sound options still use the firmware pages. The existing permission and
 protected-package controls are reused. CVTE services, Direct Boot and HDMI remain
 unchanged. See [scope and validation](docs/GAIAOS.md#unified-settings-first-stage-148-gaia13).
+
+
+## Local candidate: 1.48-gaia.15
+
+Settings adds Sound using the existing Control Center volume/mute controls.
+System apps are initially filtered from the app list and can be shown with a toggle;
+no packages are disabled or removed. The public release remains 1.48-gaia.14.
+
+
+## Local candidate: 1.48-gaia.16
+
+App icons appear in settings rows and App Info. Protected Stop/Uninstall actions
+are visible but inactive with an explanation. Management still requires explicit
+opt-in, which does not execute the original action. Uninstall uses Android confirmation.

@@ -493,7 +493,7 @@ private fun SliderRow(
 }
 
 @Composable
-private fun VolumeRow(vm: HomeViewModel) {
+internal fun VolumeRow(vm: HomeViewModel) {
     val volume = vm.volume
     SliderRow(
         glyph = if (volume.muted) Glyph.SpeakerMuted else Glyph.Speaker,

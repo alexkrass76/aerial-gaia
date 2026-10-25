@@ -48,6 +48,8 @@ import app.orchard.tv.apps.SpecialAccess
 import app.orchard.tv.settings.AerialSettings
 import app.orchard.tv.system.AdbShell
 import app.orchard.tv.ui.components.Pressable
+import app.orchard.tv.ui.components.PackageIcon
+import app.orchard.tv.ui.wallpaper.AdbAccessDialog
 import app.orchard.tv.ui.components.consumeTaps
 import app.orchard.tv.ui.components.dismissOnTap
 import app.orchard.tv.ui.components.liquidGlass
@@ -98,6 +100,7 @@ fun AppInfoSheet(
     var busy by remember(shownPkg) { mutableStateOf(false) }
     var notice by remember(shownPkg) { mutableStateOf<String?>(null) }
     // Clearing data cannot be undone, so it takes two presses; the second must come soon after the first.
+    var askManagement by remember(shownPkg) { mutableStateOf(false) }
     var confirmClear by remember(shownPkg) { mutableStateOf(false) }
     LaunchedEffect(confirmClear) {
         if (confirmClear) {
@@ -134,6 +137,7 @@ fun AppInfoSheet(
         if (busy) return
         if (!AerialSettings.adbAccess || AerialSettings.locked || !AdbShell.canManage(context, target)) {
             message = offText
+            if (!AerialSettings.adbAccess && !AerialSettings.locked && AdbShell.canManage(context, target)) askManagement = true
             return
         }
         busy = true
@@ -179,6 +183,11 @@ fun AppInfoSheet(
         }
     }
 
+    if (visible && askManagement) AdbAccessDialog(
+        onConfirm = { if (!AerialSettings.locked) AerialSettings.chooseAdbAccess(true); askManagement = false; message = null },
+        onDismiss = { askManagement = false },
+    )
+
     AnimatedVisibility(
         // Not before the app's name is known, or the sheet would flash its package name first.
         visible = visible && details != null,
@@ -197,9 +206,11 @@ fun AppInfoSheet(
                     .padding(28.dp),
             ) {
                 val d = details
-                BasicText(
-                    d?.label ?: shownPkg.orEmpty(), style = Type.LargeTitle, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                )
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                    shownPkg?.let { PackageIcon(it, 40.dp) }
+                    BasicText(d?.label ?: shownPkg.orEmpty(), style = Type.LargeTitle,
+                        maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                }
                 if (d != null && compact) {
                     BasicText(
                         stringResource(R.string.request_subtitle), style = Type.Callout,
@@ -235,16 +246,21 @@ fun AppInfoSheet(
                     )
                     Row(Modifier.padding(top = 18.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         ActionButton(Glyph.Open, stringResource(R.string.action_open), focusRequester = first) { onOpen(d.packageName) }
-                        if (AdbShell.canManage(context, d.packageName)) {
-                        ActionButton(Glyph.Stop, stringResource(R.string.action_force_stop)) { forceStop() }
+                        val manageable = AdbShell.canManage(context, d.packageName)
+                        ActionButton(Glyph.Stop, stringResource(R.string.action_force_stop), enabled = manageable && !busy) { forceStop() }
+                        if (manageable) {
                         ActionButton(
                             Glyph.ClearData,
                             stringResource(if (confirmClear) R.string.action_clear_data_confirm else R.string.action_clear_data),
                             destructive = true,
                         ) { clearData() }
                         }
-                        if (removable && AdbShell.canManage(context, d.packageName)) ActionButton(Glyph.Trash, stringResource(R.string.action_uninstall), destructive = true) { onUninstall(d.packageName) }
+                        ActionButton(Glyph.Trash, stringResource(R.string.action_uninstall), destructive = true,
+                            enabled = removable && manageable && !busy && !AerialSettings.locked) { onUninstall(d.packageName) }
                     }
+                    if (!AdbShell.canManage(context, d.packageName)) BasicText(
+                        stringResource(R.string.info_protected_actions), style = Type.Caption,
+                        modifier = Modifier.padding(top = 10.dp))
                     val nothing = d.groups.isEmpty() && d.special.isEmpty()
                     BasicText(
                         stringResource(if (nothing) R.string.info_no_permissions else R.string.info_permissions),
@@ -307,11 +323,13 @@ private fun ActionButton(
     label: String,
     focusRequester: FocusRequester? = null,
     destructive: Boolean = false,
+    enabled: Boolean = true,
     onClick: () -> Unit,
 ) {
-    Pressable(onClick = onClick, focusRequester = focusRequester, focusedScale = 1.05f) { state ->
+    Pressable(onClick = { if (enabled) onClick() }, focusRequester = focusRequester, focusedScale = 1.05f) { state ->
         val bg by animateColorAsState(if (state.focused) Palette.Focus else Palette.Fill, tween(140, easing = Motion.EaseOut), label = "action-bg")
         val fg = when {
+            !enabled -> Palette.SecondaryLabel
             state.focused -> Palette.OnFocus
             destructive -> Palette.Red
             else -> Palette.Label

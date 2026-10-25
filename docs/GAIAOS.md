@@ -320,3 +320,120 @@ The policy matches gaia.10: only the pre-existing named weather/location and
 screensaver exceptions remain. HTTPS artwork is unaffected; plain-HTTP media-server
 artwork outside those exceptions can fail to load. No TLS verification is bypassed.
 This changes neither the local phone-settings server nor the ADB task transport.
+
+
+## Settings: sound and app filtering (1.48-gaia.15, local candidate)
+
+Sound reuses the Control Center volume slider and mute handling. Left/right adjusts
+media volume; OK toggles mute. Bluetooth pairing and advanced TV sound controls
+retain firmware fallbacks. On the tested CVTE firmware ACTION_SOUND_SETTINGS has
+no handler, so the advanced entry opens the general TV settings. No output-device,
+ARC, CEC or equalizer settings are written by Aerial.
+
+The app list initially hides packages marked SYSTEM or UPDATED_SYSTEM_APP. A visible
+toggle reveals them. Filtering does not change package state or the existing
+protected-package policy. Its choice survives App Info navigation within the
+launcher process. No permissions, background polling or upstream 1.49 code are added.
+
+Validation: clean standard release build and all 83 unit tests passed. Installed
+over gaia.14 and speed-compiled. On-device checks confirmed the Sound page,
+D-pad focus, volume 8 -> 9 -> 8 and mute/unmute with OK. AudioManager confirmed
+the original unmuted level was restored. The CVTE volume overlay still appears
+on changes; this version does not suppress it. Both app filters rendered correctly
+and the ordinary-app filter was restored. No AndroidRuntime errors were seen in
+the sampled log. Physical remote acceptance, advanced sound navigation and reboot
+remain untested in this round.
+
+
+## App icons and action visibility (1.48-gaia.16, local candidate)
+
+Visible settings rows and App Info load PackageManager icons on a worker thread,
+rasterized to at most 128 x 128 pixels. There is no global icon cache or remote
+image fetch. Stop and Uninstall remain visible but inactive for protected packages,
+with an explanation; the protection policy is unchanged. Ordinary apps retain
+force-stop and Android-confirmed uninstall. If local app management is off, a
+mutation opens the existing opt-in dialog. Confirmation only enables management;
+the original operation must be requested again. It never silently enables ADB or
+executes the deferred operation. The parental lock is rechecked on confirmation.
+
+Validation: release build and 83 unit tests passed, installed and speed-compiled
+over gaia.15. Settings icons and the Kinopoisk card rendered on the TV. Stop,
+Clear Data and Uninstall were visible. Uninstall opened Android confirmation;
+Back cancelled it and the package remained installed. No force-stop, data clearing
+or permission changes were performed; management opt-in and protected-card visuals
+remain untested on-device. No AndroidRuntime errors appeared in the sampled log.
+
+## Settings capability map (1.48-gaia.17, local candidate)
+
+System preferences adds a read-only date, time-zone and language summary, plus an
+allowlist of firmware pages for date/time, language, keyboard, accessibility,
+accounts, display, storage, notifications and general options. Only installed,
+enabled, exported system handlers accessible to the launcher UID are shown.
+Targets are pinned to components and checked again before launch. Missing pages
+are omitted, not replaced by the general settings screen. This does not grant
+permissions, enable components, change settings or invoke arbitrary activities.
+
+On this CVTE image `com.android.settings` is absent. LiteSettings declares separate
+DATE_SETTINGS, LOCALE_SETTINGS and vendor InputMethodLanguage,
+ACCESSIBILITY_SETTING and ACCOUNT_SETTINGS pages. An Activity Launcher cannot
+restore Android pages that are absent from the firmware. A resolved page can still
+have additional runtime checks; on-device opening must be tested separately.
+
+Coverage and next migration steps:
+
+| Area | Current Aerial implementation | Still to port or validate |
+| --- | --- | --- |
+| Network | Independent Wi-Fi/Ethernet/VPN state, physical LAN address | Wi-Fi selection/password, IP/DNS editor; pairing remains native |
+| Bluetooth | State and native pairing entry | Device list, connect/disconnect and unpair |
+| Sound | Media volume and mute | Output selection, equalizer, digital audio/ARC |
+| Applications | Icons, filters, details, guarded stop/data clear, system-confirmed uninstall | Disabled packages and finer special-access controls |
+| Time, language, keyboard | Summary and reachable firmware pages | Native Aerial editors with read-back and rollback |
+| Accessibility/accounts | Reachable firmware pages | Individual controls and service state; preserve Home Guard |
+| Picture, HDMI/CEC, power | Existing native fallback and Gaia source switching | Discover vendor APIs and per-input semantics before writes |
+| Storage, notifications | Entries only if this image supplies accessible pages | Native views where firmware pages are missing |
+| Factory/developer functions | Not exposed by this catalog | Evaluate individually; reset/flash/ADB toggles are not navigation shortcuts |
+
+No CVTE services can be removed based on this UI inventory. A full visual and
+functional replacement is still in progress. Upstream 1.49 remains unmerged.
+
+Validation: standard release build and all 89 unit tests passed (including absent,
+private, disabled, third-party and permission-protected page handling). Installed
+over gaia.16 and speed-compiled. The System preferences screen rendered on TV;
+Date/time, keyboard languages and Accessibility opened from the launcher UID.
+Back returned to Aerial. The available list also contained Language, Accounts and
+General; those three pages were not opened in this round. No sampled AndroidRuntime
+errors. No values, accounts, accessibility services or package states were changed.
+No reboot, physical remote, HDMI signal or AirPlay regression test was performed.
+
+## Native Android preferences (1.48-gaia.18, local candidate)
+
+The settings overlay no longer opens or refers to CVTE settings. Native controls
+cover automatic network time, 12/24-hour format, system touch sounds, font scale,
+three animation scales, and selection among already-enabled input methods.
+A fixed typed allowlist prevents arbitrary setting writes. Each operation checks
+the parental lock, rejects stale UI state, writes on a worker thread and reads back
+the result. Failed operations refresh real state and show an error; concurrent
+external values are not overwritten by an automatic rollback. Keyboard IDs must
+still be in InputMethodManager's enabled list at the moment of selection.
+
+WRITE_SECURE_SETTINGS was already granted on the test TV. WRITE_SETTINGS app-op
+is additionally allowed for the native system-table controls. To undo this new
+permission specifically, restore `appops set app.orchard.tv.gaia WRITE_SETTINGS default`.
+This is a deployment prerequisite, not a permission silently escalated by the app.
+No local shell commands or new permissions are introduced in the control backend.
+
+This is NOT complete settings coverage. Network/Bluetooth currently show status
+without native editors. The previous firmware shortcuts were removed at the owner's
+request; Wi-Fi setup, pairing, manual time/time-zone, system language, keyboard
+languages, accounts, picture/audio outputs, HDMI-CEC and power controls are still
+pending. Existing firmware applications remain installed. The old control-center
+picture fallback and app-specific special-access flows have not yet been migrated.
+
+Validation: release build and 94 unit tests passed. The TV showed native Time,
+Display and Keyboard screens. Clock format changed 24 -> 12 -> 24 from the Aerial
+UI with SettingsProvider read-back. Window animation changed 1 -> 0 -> 0.5 -> 1;
+its original numeric value was restored. Only the AOSP keyboard was enabled, so
+switching between different IMEs remains untested. Automatic clock changes, font
+scaling and sound toggles were not exercised on the TV. No reboot or connectivity
+changes. The final APK only corrects default-value wording and removes a redundant
+migration notice; it was rebuilt and reinstalled with all tests passing.
