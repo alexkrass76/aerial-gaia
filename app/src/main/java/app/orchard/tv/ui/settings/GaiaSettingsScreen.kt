@@ -2,6 +2,8 @@ package app.orchard.tv.ui.settings
 
 import android.content.Intent
 import android.text.format.Formatter
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.activity.compose.BackHandler
@@ -13,6 +15,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.*
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -64,7 +67,7 @@ fun GaiaSettingsScreen(state: Overlay.GaiaSettings, vm: HomeViewModel, onOpen: (
     }
     fun page(name: String) { vm.overlay = Overlay.GaiaSettings(name) }
     fun back() {
-        vm.overlay = if (state.page == "main") Overlay.ControlCenter() else if (state.page == "outputs") Overlay.GaiaSettings("sound") else if (state.page in listOf("datetime", "keyboard", "display", "captions")) Overlay.GaiaSettings("advanced") else Overlay.GaiaSettings(selectedSection = state.page)
+        vm.overlay = if (state.page == "main") Overlay.ControlCenter() else if (state.page in listOf("outputs", "cec", "speakers")) Overlay.GaiaSettings("sound") else if (state.page in listOf("datetime", "keyboard", "display", "captions")) Overlay.GaiaSettings("advanced") else Overlay.GaiaSettings(selectedSection = state.page)
     }
     fun open(intents: List<Intent>) {
         vm.whenUnlocked {
@@ -78,6 +81,8 @@ fun GaiaSettingsScreen(state: Overlay.GaiaSettings, vm: HomeViewModel, onOpen: (
     val title = when (state.page) {
         "network" -> R.string.cc_network
         "picture" -> R.string.gs_av_picture
+        "speakers" -> R.string.gs_speaker_settings
+        "cec" -> R.string.gs_cec_title
         "outputs" -> R.string.gs_av_outputs
         "sound" -> R.string.gs_sound
         "bluetooth" -> R.string.cc_bluetooth
@@ -94,17 +99,24 @@ fun GaiaSettingsScreen(state: Overlay.GaiaSettings, vm: HomeViewModel, onOpen: (
     LaunchedEffect(Unit) { entrance.animateTo(1f, tween(380, easing = Motion.Drawer)) }
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
         Box(Modifier.fillMaxSize().dismissOnTap { back() }.background(Color.Black.copy(alpha = 0.25f)))
-        Column(Modifier.fillMaxWidth().height(360.dp)
+        Column(Modifier.fillMaxWidth().height(if (state.page == "main") 360.dp else 500.dp)
             .graphicsLayer { translationY = (1f - entrance.value) * 120.dp.toPx(); alpha = entrance.value }
             .consumeTaps().liquidGlass(30.dp, bottomCorners = false)
             .padding(start = 40.dp, end = 32.dp, top = 24.dp, bottom = 16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 SettingRow(Glyph.ChevronLeft, stringResource(R.string.gs_back), first = first,
-                    modifier = Modifier.width(130.dp), onClick = { back() })
-                Spacer(Modifier.width(20.dp))
-                BasicText(stringResource(title), style = Type.LargeTitle)
+                    modifier = Modifier.width(160.dp), onClick = { back() })
+                // Match the right column: 300 dp artwork + 32 dp gap + 4 dp list inset.
+                Spacer(Modifier.width(if (state.page == "main") 20.dp else 176.dp))
+                BasicText(stringResource(title), style = Type.LargeTitle.copy(textAlign = if (state.page == "main") androidx.compose.ui.text.style.TextAlign.Start else androidx.compose.ui.text.style.TextAlign.End), modifier = Modifier.weight(1f).padding(end = if (state.page == "main") 0.dp else 4.dp))
             }
             Spacer(Modifier.height(16.dp))
+            Row(Modifier.fillMaxWidth().weight(1f)) {
+                if (state.page != "main") {
+                    SettingsSectionArtwork(state.page, stringResource(title), Modifier.width(300.dp).fillMaxHeight())
+                    Spacer(Modifier.width(32.dp))
+                }
+                Column(Modifier.weight(1f).fillMaxHeight()) {
             if (state.page == "main") {
                 SettingsTiles(state.selectedSection, Modifier.weight(1f)) { section ->
                     if (section == "personalize") vm.overlay = Overlay.Wallpaper else page(section)
@@ -144,16 +156,37 @@ fun GaiaSettingsScreen(state: Overlay.GaiaSettings, vm: HomeViewModel, onOpen: (
                             val vpn = remember { context.packageManager.getLeanbackLaunchIntentForPackage("com.wireguard.android") ?: context.packageManager.getLaunchIntentForPackage("com.wireguard.android") }
                             if (vpn != null) SettingRow(Glyph.Shield, stringResource(R.string.gs_open_vpn), onClick = { open(listOf(vpn)) })
                         }
-                        "picture", "outputs" -> AvPreferences(state.page == "picture", revision, vm)
+                        "picture", "outputs", "cec", "speakers" -> AvPreferences(state.page == "picture", revision, vm, state.page == "cec", state.page == "speakers")
                         "sound" -> {
-                            BasicText(stringResource(R.string.cc_volume), style = Type.Headline)
-                            VolumeRow(vm)
-                            BasicText(stringResource(R.string.gs_volume_hint), style = Type.Caption)
+                            var volumeFocused by remember { mutableStateOf(false) }
+                            VolumeRow(vm, stringResource(R.string.cc_volume), onFocusChange = { volumeFocused = it })
+                            // Reserve the line so focus changes do not move the following controls.
+                            BasicText(stringResource(R.string.gs_volume_hint), style = Type.Caption,
+                                modifier = Modifier.graphicsLayer { alpha = if (volumeFocused) 1f else 0f }
+                                    .then(if (volumeFocused) Modifier else Modifier.clearAndSetSemantics { }))
                             SettingRow(if (vm.volume.muted) Glyph.SpeakerMuted else Glyph.Speaker,
-                                stringResource(if (vm.volume.muted) R.string.gs_unmute else R.string.gs_mute),
+                                stringResource(R.string.gs_mute_state),
+                                detail = stringResource(if (vm.volume.muted) R.string.st_on else R.string.st_off),
                                 onClick = { vm.whenUnlocked { vm.toggleMute() } })
+                            var customVolume by remember { mutableStateOf(app.orchard.tv.guard.GaiaVolumeOverlay.enabled(context)) }
+                            SettingRow(Glyph.Speaker, stringResource(R.string.gs_custom_volume), detail = stringResource(if (customVolume) R.string.st_on else R.string.st_off)) {
+                                vm.whenUnlocked {
+                                    customVolume = !customVolume
+                                    app.orchard.tv.guard.GaiaVolumeOverlay.preferences(context).edit().putBoolean("enabled", customVolume).apply()
+                                }
+                            }
+                            var replaceStock by remember { mutableStateOf(app.orchard.tv.guard.GaiaVolumeOverlay.preferences(context).getBoolean("replace_stock", false)) }
+                            SettingRow(Glyph.Speaker, stringResource(R.string.gs_replace_volume), detail = stringResource(if (replaceStock) R.string.st_on else R.string.st_off)) {
+                                vm.whenUnlocked {
+                                    replaceStock = !replaceStock
+                                    app.orchard.tv.guard.GaiaVolumeOverlay.preferences(context).edit().putBoolean("replace_stock", replaceStock).apply()
+                                }
+                            }
+
                             SettingRow(Glyph.Bluetooth, stringResource(R.string.gs_devices), onClick = { page("bluetooth") })
+                            SettingRow(Glyph.Speaker, stringResource(R.string.gs_speaker_settings), onClick = { page("speakers") })
                             SettingRow(Glyph.Speaker, stringResource(R.string.gs_av_outputs), onClick = { page("outputs") })
+                            SettingRow(Glyph.Gear, stringResource(R.string.gs_cec_title), onClick = { page("cec") })
                             DevicePreferences("sound", vm, revision)
                         }
                         "bluetooth" -> {
@@ -192,25 +225,31 @@ fun GaiaSettingsScreen(state: Overlay.GaiaSettings, vm: HomeViewModel, onOpen: (
                     }
                 }
             }
+                }
+            }
         }
     }
 }
 
 @Composable
 internal fun SettingRow(glyph: Glyph, title: String, detail: String? = null, first: FocusRequester? = null, modifier: Modifier = Modifier.fillMaxWidth(), packageName: String? = null, onClick: () -> Unit) {
-    Pressable(onClick = onClick, focusRequester = first, focusedScale = 1.01f, modifier = modifier) { state ->
+    Pressable(onClick = onClick, focusRequester = first, focusedScale = 1f, modifier = modifier) { state ->
         val foreground = if (state.focused) Palette.OnFocus else Palette.Label
-        Row(Modifier.fillMaxWidth().heightIn(min = 58.dp)
-            .background(if (state.focused) Palette.Focus else Color.White.copy(alpha = 0.05f), androidx.compose.foundation.shape.RoundedCornerShape(16.dp))
+        val shift by animateDpAsState(if (state.focused && !LocalReducedMotion.current) 8.dp else 0.dp,
+            spring(dampingRatio = 1f, stiffness = 520f), label = "settings-row-shift")
+        Row(Modifier.fillMaxWidth().padding(end = 10.dp).offset(x = shift).heightIn(min = 48.dp)
+            .background(if (state.focused) Palette.Focus else Color.Transparent, androidx.compose.foundation.shape.RoundedCornerShape(12.dp))
             .padding(horizontal = 18.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-            if (packageName != null) PackageIcon(packageName) else GlyphIcon(glyph, foreground, 22.dp)
+            Box(Modifier.size(32.dp).background(foreground.copy(alpha = 0.08f), androidx.compose.foundation.shape.RoundedCornerShape(8.dp)), contentAlignment = Alignment.Center) {
+                if (packageName != null) PackageIcon(packageName) else GlyphIcon(glyph, foreground, 21.dp)
+            }
             Spacer(Modifier.width(14.dp))
             BasicText(title, style = Type.Body.copy(color = foreground), modifier = Modifier.weight(1f),
                 maxLines = 2, overflow = TextOverflow.Ellipsis)
             if (detail != null) {
                 Spacer(Modifier.width(20.dp))
                 BasicText(detail, style = Type.Caption.copy(color = foreground.copy(alpha = 0.7f)),
-                    modifier = Modifier.widthIn(max = 360.dp), maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    modifier = Modifier.weight(0.85f), maxLines = 2, overflow = TextOverflow.Ellipsis)
             }
         }
     }
@@ -218,8 +257,5 @@ internal fun SettingRow(glyph: Glyph, title: String, detail: String? = null, fir
 
 @Composable
 private fun InfoRow(label: String, value: String) {
-    Row(Modifier.fillMaxWidth().padding(vertical = 5.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-        BasicText(label, style = Type.Body, modifier = Modifier.weight(1f))
-        BasicText(value, style = Type.Body, modifier = Modifier.weight(1.4f), maxLines = 2, overflow = TextOverflow.Ellipsis)
-    }
+    SettingsValueRow(Glyph.Info, label, value)
 }

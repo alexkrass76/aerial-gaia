@@ -23,7 +23,7 @@ import kotlinx.coroutines.withContext
 import org.json.JSONObject
 
 @Composable
-internal fun AvPreferences(picture: Boolean, revision: Int, vm: HomeViewModel) {
+internal fun AvPreferences(picture: Boolean, revision: Int, vm: HomeViewModel, cecPage: Boolean = false, speakerPage: Boolean = false) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var refresh by remember { mutableIntStateOf(0) }
@@ -70,7 +70,7 @@ internal fun AvPreferences(picture: Boolean, revision: Int, vm: HomeViewModel) {
     }
     edit?.let { (key, value) ->
         androidx.activity.compose.BackHandler { edit = null }
-        BasicText(stringResource(R.string.gs_av_confirm, avName(value)), style = Type.Body)
+        BasicText(stringResource(R.string.gs_av_confirm, if (key.startsWith("cec_")) stringResource(if (key == "cec_device_off") R.string.gs_cec_device_off else R.string.gs_cec_wakeup) + ": " + stringResource(if (value == "true") R.string.st_on else R.string.st_off) else avName(value)), style = Type.Body)
         SettingRow(Glyph.Check, stringResource(R.string.gs_av_apply)) { if (!busy) apply(key, value) }
         SettingRow(Glyph.ChevronLeft, stringResource(R.string.gs_back)) { edit = null }
         if (busy) BasicText(stringResource(R.string.tasks_loading), style = Type.Caption)
@@ -79,7 +79,35 @@ internal fun AvPreferences(picture: Boolean, revision: Int, vm: HomeViewModel) {
     SettingRow(Glyph.Gear, stringResource(R.string.gs_refresh)) { if (!busy) refresh++ }
     if (busy || failed) BasicText(stringResource(if (busy) R.string.tasks_loading else R.string.unavailable), style = Type.Body)
     data?.let { root ->
-        if (picture) {
+        if (speakerPage) {
+            if (root.has("speaker_balance")) {
+                val value = root.getInt("speaker_balance")
+                val active = root.optJSONObject("sound")?.optString("mode") == "OPTION_SOUND_OUT_SPEAKER" && root.has("arc") && !root.getBoolean("arc")
+                if (active) {
+                    SliderRow(Glyph.Speaker, (value + 50) / 100f, value.toString(), 20, title = stringResource(R.string.gs_speaker_balance),
+                        onStep = { direction -> if (!busy) apply("speaker_balance", (value + direction * 5).coerceIn(-50, 50).toString()) }, onClick = {})
+                    SettingRow(Glyph.Speaker, stringResource(R.string.gs_balance_center)) { if (!busy) apply("speaker_balance", "0") }
+                } else AvValue(stringResource(R.string.gs_speaker_balance), value.toString())
+                BasicText(stringResource(if (active) R.string.gs_balance_hint else R.string.gs_balance_inactive), style = Type.Caption)
+            } else BasicText(stringResource(R.string.unavailable), style = Type.Caption)
+            root.optJSONObject("sound_profile")?.let {
+                AvValue(stringResource(R.string.gs_sound_profile), avName(it.optString("mode")))
+                AvModes(it)
+                BasicText(stringResource(R.string.gs_profile_readonly), style = Type.Caption)
+            }
+        } else if (cecPage) {
+            val cec = root.optJSONObject("cec")
+            AvValue("HDMI-CEC", if (cec == null) stringResource(R.string.unavailable) else stringResource(if (cec.getBoolean("enabled")) R.string.st_on else R.string.st_off))
+            AvValue("ARC", if (!root.has("arc")) stringResource(R.string.unavailable) else stringResource(if (root.getBoolean("arc")) R.string.st_on else R.string.st_off))
+            BasicText(stringResource(R.string.gs_cec_scope), style = Type.Caption)
+            if (cec != null && cec.getBoolean("enabled") && root.has("arc") && root.has("sound")) {
+                for ((key, label) in listOf("cec_device_off" to R.string.gs_cec_device_off, "cec_wakeup" to R.string.gs_cec_wakeup)) {
+                    SettingRow(Glyph.Gear, stringResource(label), detail = stringResource(if (cec.getBoolean(key)) R.string.st_on else R.string.st_off)) {
+                        if (!busy) edit = key to (!cec.getBoolean(key)).toString()
+                    }
+                }
+            } else BasicText(stringResource(R.string.gs_cec_unavailable), style = Type.Caption)
+        } else if (picture) {
             root.optJSONObject("picture")?.let { current ->
                 AvValue(stringResource(R.string.gs_av_mode), avName(current.optString("mode")))
                 AvModes(current) { mode ->
@@ -97,8 +125,7 @@ internal fun AvPreferences(picture: Boolean, revision: Int, vm: HomeViewModel) {
                         else -> continue
                     }
                     if (item.optString("status") == "ITEM_STATUS_ENABLE" && current.optString("mode") == "OPTION_PICTURE_MODE_USER") {
-                        BasicText(stringResource(label), style = Type.Caption)
-                        SliderRow(Glyph.Sun, item.getInt("value") / 100f, item.getInt("value").toString(), 20,
+                        SliderRow(Glyph.Sun, item.getInt("value") / 100f, item.getInt("value").toString(), 20, title = stringResource(label),
                             onStep = { direction -> if (!busy) apply(item.getString("key"), (item.getInt("value") + direction * 5).coerceIn(0, 100).toString()) }, onClick = {})
                     } else AvValue(stringResource(label), item.getInt("value").toString())
                     if (item.optString("status") != "ITEM_STATUS_ENABLE")
@@ -106,8 +133,7 @@ internal fun AvPreferences(picture: Boolean, revision: Int, vm: HomeViewModel) {
                 }
             } ?: BasicText(stringResource(R.string.unavailable), style = Type.Body)
             root.optJSONObject("backlight")?.let {
-                BasicText(stringResource(R.string.gs_av_backlight), style = Type.Caption)
-                SliderRow(Glyph.Sun, it.getInt("value") / 100f, "${it.getInt("value")}%", 20,
+                SliderRow(Glyph.Sun, it.getInt("value") / 100f, "${it.getInt("value")}%", 20, title = stringResource(R.string.gs_av_backlight),
                     onStep = { direction -> if (!busy) apply("backlight", (it.getInt("value") + direction * 5).coerceIn(5, 100).toString()) }, onClick = {})
                 if (it.optString("status") != "ITEM_STATUS_ENABLE")
                     BasicText(stringResource(R.string.gs_av_locked), style = Type.Caption)
@@ -143,17 +169,26 @@ private fun AvModes(data: JSONObject, choose: ((String) -> Unit)? = null) {
 
 @Composable
 private fun AvValue(label: String, value: String) {
-    var focused by remember { mutableStateOf(false) }
-    val foreground = if (focused) Palette.OnFocus else Palette.Label
-    Row(Modifier.fillMaxWidth().onFocusChanged { focused = it.isFocused }.focusable()
-        .background(if (focused) Palette.Focus else Palette.Fill, RoundedCornerShape(14.dp)).padding(12.dp)) {
-        BasicText(label, style = Type.Body.copy(color = foreground), modifier = Modifier.weight(1f))
-        BasicText(value, style = Type.Body.copy(color = foreground), modifier = Modifier.weight(1f))
-    }
+    SettingsValueRow(Glyph.Info, label, value)
 }
 
 @Composable
 private fun avName(value: String): String = when (value) {
+    "OPTION_SOUND_MODE_STANDARD" -> stringResource(R.string.gs_av_standard)
+    "OPTION_SOUND_MODE_USER" -> stringResource(R.string.gs_av_user)
+    "OPTION_SOUND_MODE_CLASSIC" -> stringResource(R.string.gs_profile_classic)
+    "OPTION_SOUND_MODE_JAZZ" -> stringResource(R.string.gs_profile_jazz)
+    "OPTION_SOUND_MODE_POP" -> stringResource(R.string.gs_profile_pop)
+    "OPTION_SOUND_MODE_ROCK" -> stringResource(R.string.gs_profile_rock)
+    "OPTION_SOUND_MODE_VOICE" -> stringResource(R.string.gs_profile_voice)
+    "OPTION_SOUND_MODE_MUSIC" -> stringResource(R.string.gs_profile_music)
+    "OPTION_SOUND_MODE_THEATER" -> stringResource(R.string.gs_profile_theater)
+    "OPTION_SOUND_MODE_NEWS" -> stringResource(R.string.gs_profile_news)
+    "OPTION_SOUND_MODE_ELDERLY_MODE" -> stringResource(R.string.gs_profile_elderly)
+    "OPTION_SOUND_MODE_NIGHT" -> stringResource(R.string.gs_profile_night)
+    "OPTION_SOUND_MODE_GAME" -> stringResource(R.string.gs_profile_game)
+    "OPTION_SOUND_MODE_STADIUM" -> stringResource(R.string.gs_profile_stadium)
+
     "OPTION_PICTURE_MODE_STANDARD" -> stringResource(R.string.gs_av_standard)
     "OPTION_PICTURE_MODE_DYNAMIC" -> stringResource(R.string.gs_av_dynamic)
     "OPTION_PICTURE_MODE_SOFT" -> stringResource(R.string.gs_av_soft)

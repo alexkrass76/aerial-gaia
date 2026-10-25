@@ -24,6 +24,11 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.ui.focus.onFocusChanged
+import app.orchard.tv.ui.theme.LocalReducedMotion
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -438,6 +443,8 @@ internal fun SliderRow(
     level: Float,
     value: String,
     steps: Int,
+    title: String? = null,
+    onFocusChange: ((Boolean) -> Unit)? = null,
     onStep: (Int) -> Unit,
     onClick: () -> Unit,
 ) {
@@ -452,8 +459,8 @@ internal fun SliderRow(
     val stepCount by rememberUpdatedState(steps.coerceAtLeast(1))
     Pressable(
         onClick = onClick,
-        focusedScale = 1.03f,
-        modifier = Modifier.fillMaxWidth(),
+        focusedScale = if (title == null) 1.03f else 1f,
+        modifier = Modifier.fillMaxWidth().onFocusChanged { onFocusChange?.invoke(it.isFocused) },
         onKey = { e ->
             val code = e.nativeKeyEvent.keyCode
             if (code != NativeKeyEvent.KEYCODE_DPAD_LEFT && code != NativeKeyEvent.KEYCODE_DPAD_RIGHT) return@Pressable false
@@ -461,7 +468,8 @@ internal fun SliderRow(
             true
         },
     ) { state ->
-        val bg by animateColorAsState(if (state.focused) Palette.Focus else Palette.Fill, tween(140, easing = Motion.EaseOut), label = "slider-bg")
+        val shift by animateDpAsState(if (title != null && state.focused && !LocalReducedMotion.current) 8.dp else 0.dp, spring(dampingRatio = 1f, stiffness = 520f), label = "settings-slider-shift")
+        val bg by animateColorAsState(if (state.focused) Palette.Focus else if (title != null) Color.Transparent else Palette.Fill, tween(140, easing = Motion.EaseOut), label = "slider-bg")
         val fg = if (state.focused) Palette.OnFocus else Palette.Label
         val fraction by animateFloatAsState(level, spring(dampingRatio = 1f, stiffness = 700f), label = "slider-level")
         Row(
@@ -479,15 +487,22 @@ internal fun SliderRow(
                         while (travelled <= -pitch) { step(-1); travelled += pitch }
                     }
                 }
-                .clip(RoundedCornerShape(14.dp)).background(bg).height(40.dp).padding(horizontal = 14.dp),
+                .then(if (title != null) Modifier.padding(end = 10.dp).offset(x = shift) else Modifier)
+                .clip(RoundedCornerShape(if (title != null) 12.dp else 14.dp)).background(bg)
+                .heightIn(min = if (title != null) 68.dp else 40.dp).padding(horizontal = if (title != null) 18.dp else 14.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            GlyphIcon(glyph, fg, 18.dp, level = level)
-            Canvas(Modifier.weight(1f).height(6.dp)) {
+            if (title != null) Box(Modifier.size(32.dp).background(fg.copy(alpha = 0.08f), RoundedCornerShape(8.dp)), contentAlignment = Alignment.Center) {
+                GlyphIcon(glyph, fg, 21.dp, level = level)
+            } else GlyphIcon(glyph, fg, 18.dp, level = level)
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            if (title != null) BasicText(title, style = Type.Body.copy(color = fg))
+            Canvas(Modifier.fillMaxWidth().height(if (title != null) 4.dp else 6.dp)) {
                 val r = CornerRadius(size.height / 2)
                 drawRoundRect(fg.copy(alpha = 0.2f), cornerRadius = r)
                 drawRoundRect(fg, size = Size(size.width * fraction, size.height), cornerRadius = r)
+            }
             }
             BasicText(
                 value,
@@ -499,13 +514,15 @@ internal fun SliderRow(
 }
 
 @Composable
-internal fun VolumeRow(vm: HomeViewModel) {
+internal fun VolumeRow(vm: HomeViewModel, title: String? = null, onFocusChange: ((Boolean) -> Unit)? = null) {
     val volume = vm.volume
     SliderRow(
         glyph = if (volume.muted) Glyph.SpeakerMuted else Glyph.Speaker,
         level = if (volume.muted) 0f else volume.fraction,
         value = if (volume.muted) stringResource(R.string.cc_muted) else volume.level.toString(),
         steps = volume.max,
+        title = title,
+        onFocusChange = onFocusChange,
         onStep = vm::adjustVolume,
         onClick = vm::toggleMute,
     )

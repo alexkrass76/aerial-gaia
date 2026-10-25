@@ -35,6 +35,10 @@ public final class TaskBridge extends Binder {
         data.enforceInterface(TOKEN);
         long identity = Binder.clearCallingIdentity();
         try {
+            if (code == 14 || code == 15) {
+                String result = code == 14 ? OverlayLease.renew() : OverlayLease.release();
+                reply.writeNoException(); reply.writeString(result); return true;
+            }
             if (code >= 10 && code <= 13) {
                 String result;
                 if (code == 10) result = devices.wifiSnapshot();

@@ -175,6 +175,7 @@ class HomeGuardService : AccessibilityService() {
      */
     private val userUnlocked = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
+            if (packageName == "app.orchard.tv.gaia") gaiaVolume.start()
             // Before unlock only Direct Boot aware launchers resolve.
             refreshStockHomes()
             watchCecInput()
@@ -300,8 +301,11 @@ class HomeGuardService : AccessibilityService() {
         }.onFailure { Log.w(TAG, "could not watch the current input", it) }
     }
 
+    private val gaiaVolume by lazy { GaiaVolumeOverlay(this) { updateKeyFilter() } }
+
     override fun onServiceConnected() {
         instance = this
+        if (packageName == "app.orchard.tv.gaia") gaiaVolume.start()
         // Register before querying homes or checking the state so an unlock cannot be missed.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             registerReceiver(userUnlocked, IntentFilter(Intent.ACTION_USER_UNLOCKED))
@@ -442,6 +446,7 @@ class HomeGuardService : AccessibilityService() {
     }
 
     override fun onDestroy() {
+        if (packageName == "app.orchard.tv.gaia") gaiaVolume.close()
         runCatching { unregisterReceiver(screenOn) }
         runCatching { unregisterReceiver(homeKey) }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
@@ -459,6 +464,7 @@ class HomeGuardService : AccessibilityService() {
     }
 
     override fun onUnbind(intent: Intent?): Boolean {
+        if (packageName == "app.orchard.tv.gaia") gaiaVolume.close()
         if (instance === this) instance = null
         return super.onUnbind(intent)
     }
@@ -495,6 +501,7 @@ class HomeGuardService : AccessibilityService() {
         val homeWanted = wanted && !isDefaultHome()
         val cecWanted = !screenOff && CecHome.active(this, lastWindow?.first)
         filteringForCecOnly = cecWanted && !homeWanted
+        if (screenOff && packageName == "app.orchard.tv.gaia") gaiaVolume.hide()
         val want = if (homeWanted || cecWanted) info.flags or flag else info.flags and flag.inv()
         if (want == info.flags) return
         info.flags = want

@@ -655,3 +655,127 @@ key changed it to 95, and the Picture page Undo button restored 100. Read-back
 confirmed unchanged Soft picture values, speaker routing and PCM. The helper
 remained connected with autostart enabled. Picture mode/numeric writes and PCM/RAW
 have not been physically verified; no reboot or audio routing change was performed.
+
+
+## HDMI-CEC power permissions (1.48-gaia.28)
+
+Sound now has an HDMI-CEC and power page. It reads the vendor CEC enabled flag,
+ARC enabled flag, connected-device auto-off permission and TV wake-up permission.
+ARC enabled is not proof of an active audio link. When CEC is disabled, this
+firmware masks the two permission getters as false; the UI does not present those
+masked values as editable settings. Missing CEC, ARC or output reads also prevent
+permission writes. The master CEC/ARC switches and output routing remain read-only.
+
+With CEC already enabled, the two permission setters are allowlisted. Each requires
+confirmation, unchanged source/old value/audio output/ARC state, and read-back.
+The existing single-change journal supports manual undo; undo additionally refuses
+changed output/ARC or disabled CEC. These setters configure future power behavior;
+no standby, wake, remote-key or reset command is exposed. They are not yet physically
+validated with attached HDMI devices. No vendor implementation is bundled.
+
+Investigation found that output selection returns an updated cached enum before
+asynchronous hardware routing completes. Disabling CEC also clears both power
+permissions. A mode read-back alone cannot prove routing success or a complete
+rollback. Supporting those operations requires a broader restoration design and
+live testing with appropriate HDMI/ARC equipment.
+
+Validation: release build and 124 unit tests pass. Installed over gaia.27 and
+speed-compiled. On the test TV CEC and ARC read disabled; native page displays both
+and explains unavailable permissions. Remote key injection reaches the new page.
+No CEC/audio/picture values were changed and no reboot was performed. Permission
+writes, undo and device power behavior remain unverified on hardware.
+
+
+## Speaker balance and sound profile discovery (1.48-gaia.29)
+
+Sound has a Speakers and sound profile page. Native CVTE speaker balance is exposed
+in steps of five over -50..50, with a Center action and existing persistent single-
+change Undo. Writes require a fresh matching source/value, speaker routing, and ARC
+off, plus successful read-back. No audio route, CEC or volume setter is called.
+The firmware reports current and supported sound profiles; those remain read-only.
+Profile labels are localized in all five languages.
+
+Vendor routing still returns a cached choice before the hardware action completes;
+no reliable routing completion check was established. Audio delay is stored by a
+separate vendor audio-source type, not necessarily the current TV input. Neither
+routing nor delay writes are added based on these incomplete observations.
+
+Validation: release build and 126 unit tests passed. Installed and speed-compiled.
+Read-back reports centered balance and Standard profile, with Standard, Music,
+Theater, News and User available. Live balance verification is recorded below.
+
+On-device UI validation: Down keys focused the balance slider; Right changed the
+firmware value 0 -> 5. The visible Undo action restored 0. Snapshots confirmed the
+same speaker route, PCM, disabled CEC/ARC, Standard sound profile and picture values.
+The helper remained connected with autostart enabled. Audible channel behavior,
+physical remote acceptance and playback regressions remain unverified. No reboot
+or routing change was performed. The candidate and commit remain local.
+
+
+## Settings row presentation (1.48-gaia.30)
+
+Action and read-only rows share an inset icon well, label/value alignment, transparent
+idle background and a white focused surface. Focus translates the row 8 dp into a
+reserved end gutter without scaling it; reduced-motion mode suppresses translation.
+Read-only values remain focusable for remote scrolling without an invented action.
+Settings sliders integrate their labels and use the same inset/selection style.
+The compact Control Center sliders retain their existing presentation. Root section
+tiles and setting write policies are unchanged. Release compilation passed; this
+presentation-only change adds no setting operations or permissions.
+
+Installed and speed-compiled on TV. Screenshots verified the Sound and Speakers
+pages, the focused slider and a multi-line information row. Injected Up/Down keys
+moved focus and scrolled the list; the Back label fits on one line after widening
+its header slot. No setting values were changed in this UI verification. Physical
+remote feel and animation smoothness still require user acceptance.
+
+
+## Two-column settings (1.48-gaia.31)
+
+The tvOS reference concerns page layout, rather than focus translation alone.
+Internal pages now use a 500 dp tall surface, with a 300 dp decorative section
+column and a 32 dp gap before the compact right-hand controls. The section artwork
+is not focusable. The main tile page retains its 360 dp sheet. App lists retain
+lazy scrolling and selected-app focus restoration. Action rows reserve balanced
+width for names and details; base row height is reduced to 48 dp. Settings behavior
+and permissions are unchanged. Release compilation passed.
+
+Installed and speed-compiled on the test TV. Screenshots verified Sound and Speakers:
+section artwork stays left, controls and multi-line values fit the right column.
+Injected Down keys select the compact balance slider. No setting values were
+changed; physical remote acceptance and other pages still need user verification.
+
+
+## Right-column headings (1.48-gaia.32)
+
+Internal settings page headings align with the start of the right-hand list, using
+its artwork column, gap and content inset. Back stays on the left. Main settings
+heading placement is unchanged; long headings are constrained to available width.
+This is a layout-only change with no parameter writes.
+
+Release installed and speed-compiled on TV. Sound and Speakers page screenshots
+confirmed headings align with the right column, including the full Russian
+Speakers and sound profile heading. No setting values were changed.
+
+
+## Right-aligned headings (1.48-gaia.33)
+
+Internal page headings now use end alignment against the right column edge,
+correcting gaia.32 which only moved their starting position. Main page heading
+and parameter values are unchanged. Release build passed.
+
+Installed and speed-compiled. TV screenshots confirm matching right edges for
+Sound and Speakers headings, with no clipping. Settings values were not changed.
+
+
+## Contextual volume help (1.48-gaia.34)
+
+The Sound page shows the remote-control hint only while the volume slider has
+focus. Its space remains reserved to avoid layout jumps; hidden help is also
+removed from accessibility semantics. Mute is a stable setting label with On/Off
+state sourced from the existing volume model, rather than an imperative command.
+All five locales include the new label. Existing mute actions are unchanged.
+
+Release build passed; installed and speed-compiled. TV screenshots verified visible
+help on volume, hidden help on the mute row, and Mute Off while sound is enabled.
+No volume or mute values were changed during the presentation check.

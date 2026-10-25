@@ -21,6 +21,37 @@ internal object GaiaAvSettings {
     private val component = ComponentName("com.cvte.tv.api.impl", "com.cvte.tv.api.TvApiService")
     private const val JOURNAL = "last_av_change"
 
+    /** Shell-triggered, bounded diagnostics. Never changes volume or vendor windows. */
+    @Synchronized fun probeVolume(context: Context): JSONObject = withSession(context) { session ->
+        val rows = mutableListOf<String>()
+        val receiver = object : android.os.Binder() {
+            override fun onTransact(code: Int, data: android.os.Parcel, reply: android.os.Parcel?, flags: Int): Boolean {
+                if (code == INTERFACE_TRANSACTION) { reply?.writeString(API + "INotifyListener"); return true }
+                if (code != 1) return super.onTransact(code, data, reply, flags)
+                check(getCallingUid() == 1000) { "System required" }
+                data.enforceInterface(API + "INotifyListener")
+                val action = data.readString()
+                if (data.readInt() != 0) android.os.Bundle.CREATOR.createFromParcel(data)
+                if (action in setOf("notifySoundSpeakerOutChange", "notifySoundSpeakerOutMuteChange",
+                        "notifySoundArcAmpVolumeChange", "notifySoundArcAmpMuteChange")) {
+                    synchronized(rows) { if (rows.size < 64) rows.add(requireNotNull(action)) }
+                }
+                reply?.writeNoException()
+                return true
+            }
+        }
+        val listenerType = session.type("INotifyListener")
+        val listener = session.type("INotifyListener\$Stub").getMethod("asInterface", IBinder::class.java).invoke(null, receiver)
+        session.type("ITvApiManager").getMethod("addNotifyListener", listenerType).invoke(session.manager, listener)
+        try {
+            android.util.Log.i("GaiaVolumeProbe", "TV API listener registered for 20 seconds")
+            CountDownLatch(1).await(20, TimeUnit.SECONDS)
+            JSONObject().put("events", synchronized(rows) { JSONArray(rows.toList()) })
+        } finally {
+            session.type("ITvApiManager").getMethod("removeNotifyListener", listenerType).invoke(session.manager, listener)
+        }
+    }
+
     @Synchronized fun snapshot(context: Context): JSONObject = withSession(context) { it.snapshot() }
     fun hasUndo(context: Context): Boolean = context.getSharedPreferences("gaia_av", 0).contains(JOURNAL)
 
@@ -52,6 +83,11 @@ internal object GaiaAvSettings {
             check(current.getString("source") == before.getString("source")) { "Input changed" }
             val actual = GaiaAvPolicy.value(current, key)
             check(actual == old || actual == record.getString("new")) { "Setting changed externally" }
+            if (key == "cec_device_off" || key == "cec_wakeup") {
+                check(current.getBoolean("arc") == before.getBoolean("arc"))
+                check(current.getJSONObject("sound").getString("mode") == before.getJSONObject("sound").getString("mode"))
+                check(current.getJSONObject("cec").getBoolean("enabled"))
+            }
             if (actual != old) {
                 if (key.startsWith("PICTURE_") || key == "backlight") check(current.getJSONObject("picture").getString("mode") == before.getJSONObject("picture").getString("mode"))
                 GaiaAvPolicy.validate(current, current, key, old, restoring = true)
@@ -95,6 +131,11 @@ internal object GaiaAvSettings {
         fun enumValue(name: String, value: String): Any = requireNotNull(type(name).enumConstants?.firstOrNull { enumName(it) == value })
         fun write(key: String, value: String): Boolean {
             return when (key) {
+                "speaker_balance" -> type("ITVApiSoundSpeakerOutAidl").getMethod("eventSoundSpeakerOutSetBalance", Int::class.javaPrimitiveType)
+                    .invoke(group("SoundSpeakerOut"), value.toInt()) == true
+                "cec_device_off", "cec_wakeup" -> type("ITVApiSystemCecAidl").getMethod(
+                    if (key == "cec_device_off") "eventSystemCecSetAutoPowerConnectedDeviceEnable" else "eventSystemCecSetAllowDeviceCtrlTVPowerOnEnable",
+                    Boolean::class.javaPrimitiveType).invoke(group("SystemCec"), value.toBooleanStrict()) == true
                 "backlight" -> type("ITVApiSystemBacklightAidl").getMethod("eventSystemBacklightDimmingPWMSetDuty", Int::class.javaPrimitiveType)
                     .invoke(group("SystemBacklight"), value.toInt()) == true
                 "picture_mode" -> type("ITVApiPictureControlAidl").getMethod("eventSetCurrentPictureMode", type("EnumModeOptionId"))
@@ -145,6 +186,28 @@ internal object GaiaAvSettings {
                 val target = group("SoundSpdifOut")
                 result.put("digital", JSONObject().put("mode", enumName(get(target, "SoundSpdifOut", "eventSoundSpdifOutGetMode")))
                     .put("modes", names(get(target, "SoundSpdifOut", "eventSoundSpdifOutGetModeList"))))
+            }
+            runCatching {
+                val target = group("SystemCec")
+                val cec = JSONObject()
+                for ((key, method) in listOf("enabled" to "eventSystemCecIsEnabled",
+                    "cec_device_off" to "eventSystemCecIsAutoPowerConnectedDeviceEnabled",
+                    "cec_wakeup" to "eventSystemCecIsAllowDeviceCtrlTVPowerOnEnabled")) {
+                    cec.put(key, get(target, "SystemCec", method) as Boolean)
+                }
+                result.put("cec", cec)
+            }
+            runCatching {
+                result.put("arc", get(group("SoundArc"), "SoundArc", "eventSoundArcIsEnabled") as Boolean)
+            }
+            runCatching {
+                val value = get(group("SoundSpeakerOut"), "SoundSpeakerOut", "eventSoundSpeakerOutGetBalance") as Int
+                if (value in -50..50) result.put("speaker_balance", value)
+            }
+            runCatching {
+                val target = group("SoundEq")
+                result.put("sound_profile", JSONObject().put("mode", enumName(get(target, "SoundEq", "eventGetCurrentSoundMode")))
+                    .put("modes", names(get(target, "SoundEq", "eventGetSoundModeOptions"))))
             }
             check(result.length() > 0) { "No supported firmware reads" }
             return result

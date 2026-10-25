@@ -14,6 +14,9 @@ class TaskBridgeProvider : ContentProvider() {
     override fun onCreate() = true
     override fun call(method: String, arg: String?, extras: Bundle?): Bundle {
         check(Binder.getCallingUid() == 2000 || Binder.getCallingUid() == 0) { "Shell required" }
+        if (method == "volume_probe") return Bundle().apply {
+            putString("result", app.orchard.tv.system.GaiaAvSettings.probeVolume(requireNotNull(context)).toString())
+        }
         if (method == "av_snapshot") return Bundle().apply {
             putString("result", app.orchard.tv.system.GaiaAvSettings.snapshot(requireNotNull(context)).toString())
         }
@@ -112,7 +115,7 @@ internal object TaskBridgeClient {
             if (taskId != null) data.writeInt(taskId)
             check(remote.transact(code, data, reply, 0))
             reply.readException()
-            return if (code == 1 || code in 10..12) reply.readString() else null
+            return if (code == 1 || code in 10..12 || code == 14 || code == 15) reply.readString() else null
         } finally { data.recycle(); reply.recycle() }
     }
 }

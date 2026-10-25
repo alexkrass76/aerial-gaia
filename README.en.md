@@ -4,7 +4,18 @@ GaiaOS / CVTE port of [Aerial by pengchujin](https://github.com/pengchujin/aeria
 
 [Russian README](README.md) · [Installation and rollback (Russian)](docs/GAIAOS.md) · [Porting notes](docs/devices/gaiaos-t950s-be30ae.md)
 
-Current build: **1.48-gaia.14**, versionCode 64, package `app.orchard.tv.gaia`.
+Current build: **1.48-gaia.39**, versionCode 89, package `app.orchard.tv.gaia`.
+
+The release adds native settings, a two-column settings layout, personalization inside
+settings, contextual volume help, speaker balance and an opt-in vertical volume meter.
+An independently opt-in experimental lease temporarily stops CVTE OptionService and
+restores it when the helper heartbeat expires. Version .39 removes phantom 0% flashes
+from heartbeat window checks. Both options default off; this is not full GlobalUI
+replacement. USB/ARC/warnings and boot/standby still need acceptance testing.
+See [implementation and recovery](docs/GLOBALUI-REPLACEMENT.md).
+Release build and 126 tests passed; the published APK is the installed test build.
+HDMI signal, AirPlay and reboot were not re-tested in this cycle. Settings coverage
+is incomplete; upstream update checks are disabled and Gaia updates remain manual.
 
 - Styled, static Direct Boot card uses framework Canvas and APK resources only, waiting for unlock before opening the regular UI.
 - Upstream v1.47 updates phone settings, app/folder management, Home Guard, remote controls and screensavers.
