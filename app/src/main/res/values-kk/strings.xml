@@ -445,4 +445,27 @@
     <string name="channels_remove_favorite">★ Таңдаулыдан алып тастау</string>
     <string name="channels_play_error">ТВ ойнатқышын ашу мүмкін болмады.</string>
     <string name="channels_no_program">Ағымдағы бағдарлама туралы мәлімет жоқ</string>
+    <string name="gs_mtk_readonly">Тек оқу · MediaTek</string>
+    <string name="gs_mtk_unavailable">Оқу қолжетімсіз. Жергілікті ADB қатынасын тексеріп, қайталап көріңіз.</string>
+    <string name="gs_mtk_unverified">Қолдау расталмады</string>
+    <string name="gs_mtk_verified_write">Өзгерістер қайта оқу арқылы тексеріледі. Соңғы өзгерісті қайтаруға болады.</string>
+    <string name="gs_mtk_write_failed">Өзгерту не тексеру орындалмады. Бастапқы кіріс пен профильге оралып, өзгерісті қайтарыңыз.</string>
+    <string name="gs_unknown">Белгісіз</string>
+    <string name="gs_cec_volume">CEC арқылы дыбыс деңгейі</string>
+    <string name="gs_cec_system_audio">Жүйелік аудио белсенді</string>
+    <string name="gs_cec_arc_established">ARC қосылымы орнатылған</string>
+    <string name="gs_cec_arc_ports">ARC қолдайтын порттар</string>
+    <string name="gs_cec_snapshot_hint">Ағымдағы күй · Жаңарту үшін «Жаңарту» түймесін басыңыз. ARC қолдауы қосылым орнатылғанын білдірмейді.</string>
+    <string name="gs_cec_undo">Соңғы CEC өзгерісін қайтару</string>
+    <string name="gs_cec_write_failed">CEC өзгерту не тексеру орындалмады. Өзгерісті қайтарыңыз. Белсенді не белгісіз аудио өзгерістерді бұғаттайды.</string>
+    <string name="gs_cec_write_hint">Өзгерістер растауды және қызмет күйін тексеруді қажет етеді. CEC HDMI құрылғыларын қайта анықтауы мүмкін. Аудио және ARC қосылымы тек оқылады.</string>
+    <string name="ss_night">Түнгі режим</string>
+    <string name="ss_night_hint">Кескінді біртіндеп жылытып, артқы жарықты 5%-ға төмендетеді. Бастапқы мән шығу кезінде қалпына келтіріледі. Қолдау көрсетілетін микробағдарлама мен API қажет.</string>
+    <string name="ss_night_off">Өшірулі</string>
+    <string name="ss_night_on">Қосулы</string>
+    <string name="ss_night_duration">Ауысу уақыты</string>
+    <string name="ss_night_dimming">Күңгірттеу</string>
+    <string name="ss_night_percent">%1$d%%</string>
+<string name="ss_night_failed">Артқы жарықты басқару аяқталмады. Бастапқы кіріс пен кескін режиміне оралып, қалпына келтіруді қайталаңыз.</string>
+<string name="ss_night_restore">Артқы жарықты қалпына келтіру</string>
 </resources>

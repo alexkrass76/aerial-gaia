@@ -445,4 +445,27 @@
     <string name="channels_remove_favorite">★ З обраного</string>
     <string name="channels_play_error">Не вдалося відкрити ТВ-програвач.</string>
     <string name="channels_no_program">Немає даних про поточну передачу</string>
+    <string name="gs_mtk_readonly">Лише читання · MediaTek</string>
+    <string name="gs_mtk_unavailable">Читання недоступне. Перевірте локальний доступ ADB і повторіть спробу.</string>
+    <string name="gs_mtk_unverified">Підтримку не підтверджено</string>
+    <string name="gs_mtk_verified_write">Зміни перевіряються повторним читанням. Можна скасувати останню зміну.</string>
+    <string name="gs_mtk_write_failed">Зміна або перевірка не вдалася. Скористайтеся скасуванням; спочатку поверніть початковий вхід і профіль.</string>
+    <string name="gs_unknown">Невідомо</string>
+    <string name="gs_cec_volume">Гучність через CEC</string>
+    <string name="gs_cec_system_audio">Системна аудіосистема активна</string>
+    <string name="gs_cec_arc_established">З’єднання ARC встановлено</string>
+    <string name="gs_cec_arc_ports">Порти з підтримкою ARC</string>
+    <string name="gs_cec_snapshot_hint">Знімок поточного стану · Натисніть «Оновити». Підтримка ARC не означає встановлене з’єднання.</string>
+    <string name="gs_cec_undo">Скасувати останню зміну CEC</string>
+    <string name="gs_cec_write_failed">Зміна або перевірка CEC не вдалася. Скористайтеся скасуванням. Активна або невідома аудіосистема блокує зміни.</string>
+    <string name="gs_cec_write_hint">Зміни потребують підтвердження та перевірки стану служби. CEC може повторно виявити HDMI-пристрої. Аудіосистема та з’єднання ARC лише для читання.</string>
+    <string name="ss_night">Нічний режим</string>
+    <string name="ss_night_hint">Плавно зігріває зображення та знижує підсвічування до 5%. Початкове значення зберігається та відновлюється при виході. Потрібні підтримувана прошивка та доступ до API.</string>
+    <string name="ss_night_off">Вимк.</string>
+    <string name="ss_night_on">Увімк.</string>
+    <string name="ss_night_duration">Час переходу</string>
+    <string name="ss_night_dimming">Затемнення</string>
+    <string name="ss_night_percent">%1$d%%</string>
+<string name="ss_night_failed">Не вдалося завершити керування підсвічуванням. Поверніться до початкового входу та режиму зображення й повторіть відновлення.</string>
+<string name="ss_night_restore">Відновити підсвічування</string>
 </resources>

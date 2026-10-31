@@ -12,13 +12,13 @@ import java.nio.ByteOrder
 import java.util.ArrayDeque
 
 /** Minimal legacy ADB transport for this TV's loopback adbd, never a remote host. */
-internal class LocalAdbTransport internal constructor(private val socket: Socket) : Closeable {
+internal class LocalAdbTransport internal constructor(private val socket: Socket, timeoutMs: Int = 30_000) : Closeable {
     private val input = DataInputStream(socket.getInputStream())
     private val output = socket.getOutputStream()
-    private val deadline = System.nanoTime() + 30_000_000_000L
+    private val deadline = System.nanoTime() + timeoutMs.toLong() * 1_000_000L
     private data class Message(val command: Int, val arg0: Int, val arg1: Int, val payload: ByteArray)
 
-    init { socket.soTimeout = 4000 }
+    init { socket.soTimeout = if (timeoutMs == 30_000) 4000 else timeoutMs }
 
     fun handshake() {
         send("CNXN", 0x01000000, 4096, "host::\u0000".toByteArray())
@@ -128,11 +128,11 @@ internal class LocalAdbTransport internal constructor(private val socket: Socket
 
     override fun close() = socket.close()
     companion object {
-        fun connect(): LocalAdbTransport {
+        fun connect(timeoutMs: Int = 30_000): LocalAdbTransport {
             val socket = Socket()
             try {
                 socket.connect(InetSocketAddress(InetAddress.getByAddress(byteArrayOf(127, 0, 0, 1)), 5555), 3000)
-                return LocalAdbTransport(socket).also { it.handshake() }
+                return LocalAdbTransport(socket, timeoutMs).also { it.handshake() }
             } catch (e: Exception) { socket.close(); throw e }
         }
         private fun code(text: String) = ByteBuffer.wrap(text.toByteArray(Charsets.US_ASCII)).order(ByteOrder.LITTLE_ENDIAN).int

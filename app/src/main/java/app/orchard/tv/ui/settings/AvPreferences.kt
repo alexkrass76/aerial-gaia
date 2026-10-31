@@ -25,6 +25,10 @@ import org.json.JSONObject
 @Composable
 internal fun AvPreferences(picture: Boolean, revision: Int, vm: HomeViewModel, cecPage: Boolean = false, speakerPage: Boolean = false) {
     val context = LocalContext.current
+    if (app.orchard.tv.system.MediaTekAvReader.available(context)) {
+        MediaTekAvPreferences(picture, revision, cecPage, speakerPage, vm)
+        return
+    }
     val scope = rememberCoroutineScope()
     var refresh by remember { mutableIntStateOf(0) }
     var undo by remember { mutableStateOf(GaiaAvSettings.hasUndo(context)) }

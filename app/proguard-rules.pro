@@ -6,3 +6,6 @@
 # Kept, the reference stays in a class that only API 34+ loads.
 -keep class androidx.activity.OnBackPressedDispatcher$Api34Impl { *; }
 -keep class androidx.activity.OnBackPressedDispatcher$Api33Impl { *; }
+
+# Fixed read-only entry point launched from our installed APK by the local shell.
+-keep class aerial.probe.MediaTekReadProbe { *; }

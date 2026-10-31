@@ -6,6 +6,8 @@ import android.content.Intent
 import app.orchard.tv.apps.TileSheet
 import app.orchard.tv.settings.AerialSettings
 import app.orchard.tv.settings.NameMode
+import app.orchard.tv.system.YaosCecControl
+import app.orchard.tv.system.MediaTekAvReader
 import app.orchard.tv.system.DiagLog
 import app.orchard.tv.update.Updates
 import app.orchard.tv.wallpaper.ScreensaverMode
@@ -30,6 +32,87 @@ import kotlinx.coroutines.launch
  */
 class ConfigReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
+        if (intent.getBooleanExtra("yaos_cec_roundtrip_test", false)) {
+            val pending=goAsync()
+            val app=context.applicationContext
+            @OptIn(kotlinx.coroutines.DelicateCoroutinesApi::class)
+            kotlinx.coroutines.GlobalScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                val report=org.json.JSONObject()
+                try {
+                    check(!YaosCecControl.hasUndo(app))
+                    val rows=org.json.JSONArray()
+                    for(key in listOf("auto_off","auto_wake","volume","enabled")) {
+                        val before=YaosCecControl.snapshot(app)
+                        val old=before.getJSONObject("cec").getBoolean(key)
+                        try { YaosCecControl.change(app,key,!old,before) }
+                        finally { if(YaosCecControl.hasUndo(app)) YaosCecControl.undo(app) }
+                        val after=YaosCecControl.snapshot(app)
+                        check(after.getJSONObject("cec").getBoolean(key)==old)
+                        check(after.getJSONObject("cec_stored").getString(key)==before.getJSONObject("cec_stored").getString(key))
+                        rows.put(org.json.JSONObject().put("key",key).put("restored",old).put("stored",after.getJSONObject("cec_stored").getString(key)))
+                    }
+                    report.put("ok",true).put("roundtrips",rows)
+                } catch(e: Exception) { report.put("ok",false).put("error",e.toString()) }
+                finally {
+                    java.io.File(app.getExternalFilesDir(null),"yaos-cec-roundtrip.json").writeText(report.toString())
+                    pending.finish()
+                }
+            }
+            return
+        }
+        // Owner-triggered integration check: one-step writes followed immediately by undo.
+        if (intent.getBooleanExtra("mediatek_roundtrip_test", false) || intent.getBooleanExtra("mediatek_backlight_roundtrip_test", false)) {
+            val pending = goAsync()
+            val app = context.applicationContext
+            @OptIn(kotlinx.coroutines.DelicateCoroutinesApi::class)
+            kotlinx.coroutines.GlobalScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                val report = org.json.JSONObject()
+                try {
+                    check(!MediaTekAvReader.hasUndo(app)) { "Existing undo must be preserved" }
+                    val rows = org.json.JSONArray()
+                    val keys = if (intent.getBooleanExtra("mediatek_backlight_roundtrip_test", false)) listOf("g_disp__disp_back_light")
+                        else listOf("g_video__brightness", "g_video__contrast", "g_video__vid_sat",
+                            "g_video__vid_shp", "g_video__vid_hue", "g_audio__aud_balance", "g_disp__disp_back_light")
+                    for (key in keys) {
+                        val before = MediaTekAvReader.snapshot(app)
+                        val old = aerial.probe.MediaTekWritePolicy.value(before, key)
+                        val target = old + if (old < (if (key == "g_audio__aud_balance") 50 else 100)) 1 else -1
+                        try {
+                            MediaTekAvReader.change(app, key, target, before)
+                        } finally {
+                            if (MediaTekAvReader.hasUndo(app)) MediaTekAvReader.undo(app)
+                        }
+                        val after = MediaTekAvReader.snapshot(app)
+                        check(aerial.probe.MediaTekWritePolicy.value(after,key) == old)
+                        rows.put(org.json.JSONObject().put("key",key).put("before",old).put("tested",target).put("restored",old))
+                    }
+                    report.put("roundtrips", rows).put("ok",true)
+                } catch (e: Exception) { report.put("ok",false).put("error", e.toString()) }
+                finally {
+                    java.io.File(app.getExternalFilesDir(null), "mediatek-roundtrip.json").writeText(report.toString())
+                    pending.finish()
+                }
+            }
+            return
+        }
+        // Explicit, permission-guarded diagnostic. Normal startup never loads vendor code.
+        if (intent.getBooleanExtra("mediatek_read_probe", false)) {
+            val pending = goAsync()
+            val app = context.applicationContext
+            @OptIn(kotlinx.coroutines.DelicateCoroutinesApi::class)
+            kotlinx.coroutines.GlobalScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                try {
+                    val result = MediaTekAvReader.snapshot(app).put("cec", MediaTekAvReader.cecSnapshot(app).getJSONObject("cec")).toString()
+                    java.io.File(app.getExternalFilesDir(null), "mediatek-read-probe.json").writeText(result)
+                    android.util.Log.i("AerialMtkProbe", result)
+                } catch (e: Exception) {
+                    java.io.File(app.getExternalFilesDir(null), "mediatek-read-probe.json").writeText(
+                        org.json.JSONObject().put("status", "unavailable").put("error", e.javaClass.simpleName).toString())
+                    android.util.Log.e("AerialMtkProbe", "Probe unavailable", e)
+                } finally { pending.finish() }
+            }
+            return
+        }
         // ... --es export_tiles <name>   (every tile on one picture; see TileSheet)
         // Runs on past the broadcast's time limit; Home keeps the process alive. Look for the file.
         intent.getStringExtra("export_tiles")?.takeIf { Regex("^[A-Za-z0-9_-]+$").matches(it) }?.let { name ->

@@ -288,6 +288,25 @@ fun WallpaperSheet(
                     }
 
                     Spacer(Modifier.height(22.dp))
+                    SectionTitle(R.string.ss_night)
+                    Group { note ->
+                        if (app.orchard.tv.system.NightBacklight.failed) {
+                            SettingRow(R.string.ss_night_restore, stringResource(R.string.ss_night_failed), note, first = true) {
+                                Chip(stringResource(R.string.ss_night_restore), on = false) { scope.launch { app.orchard.tv.system.NightBacklight.recover(context) } }
+                            }
+                        }
+                        Choices(R.string.ss_night, stringResource(R.string.ss_night_hint), note,
+                            listOf(false to R.string.ss_night_off, true to R.string.ss_night_on),
+                            AerialSettings.screensaverNight, AerialSettings::chooseScreensaverNight)
+                        if (AerialSettings.screensaverNight) {
+                            Choices(R.string.ss_night_duration, null, note,
+                                app.orchard.tv.ui.home.NightModeEnvelope.minutes.map { it to stringResource(R.string.ss_minutes, it) },
+                                AerialSettings.screensaverNightMinutes, AerialSettings::chooseScreensaverNightMinutes)
+
+                        }
+                    }
+
+                    Spacer(Modifier.height(22.dp))
                     SectionTitle(R.string.wp_weather)
                     Group(stringResource(if (Weather.chosen) R.string.wp_weather_chosen else R.string.wp_weather_guessed)) { note ->
                         SettingRow(R.string.wp_weather_city, null, note, first = true) { WeatherValue() }

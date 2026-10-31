@@ -171,6 +171,10 @@ object AerialSettings {
      */
     var screensaverMinutes by mutableStateOf(DEFAULT_SCREENSAVER_MINUTES); private set
 
+    var screensaverNight by mutableStateOf(false); private set
+    var screensaverNightMinutes by mutableStateOf(15); private set
+    var screensaverNightDimming by mutableStateOf(75); private set
+
     const val NEVER = 0
 
     val screensaverChoices = listOf(2, 5, 10, 20, NEVER)
@@ -220,6 +224,9 @@ object AerialSettings {
             if (prefs.contains("app_content")) prefs.getBoolean("app_content", true) else if (app.packageName == "app.orchard.tv.gaia") false else null,
         )
         screensaverMinutes = prefs.getInt("screensaver_minutes", DEFAULT_SCREENSAVER_MINUTES)
+        screensaverNight = prefs.getBoolean("screensaver_night", false)
+        screensaverNightMinutes = prefs.getInt("screensaver_night_minutes", 15).takeIf { it in listOf(5,15,30,60) } ?: 15
+        screensaverNightDimming = prefs.getInt("screensaver_night_dimming", 75).takeIf { it in listOf(50,75,90) } ?: 75
         aerialQuality = AerialQuality.of(prefs.getString("aerial_quality", null))
         // Preserve Gaia's existing full dock appearance on the first 1.48 update.
         // Explicit Auto/Lite choices remain respected on subsequent launches.
@@ -329,6 +336,23 @@ object AerialSettings {
     fun chooseAerialQuality(quality: AerialQuality) {
         aerialQuality = quality
         app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit { putString("aerial_quality", quality.key) }
+    }
+
+    fun chooseScreensaverNight(on: Boolean) {
+        screensaverNight = on
+        app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit { putBoolean("screensaver_night", on) }
+    }
+
+    fun chooseScreensaverNightMinutes(minutes: Int) {
+        require(minutes in listOf(5,15,30,60))
+        screensaverNightMinutes = minutes
+        app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit { putInt("screensaver_night_minutes", minutes) }
+    }
+
+    fun chooseScreensaverNightDimming(percent: Int) {
+        require(percent in listOf(50,75,90))
+        screensaverNightDimming = percent
+        app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit { putInt("screensaver_night_dimming", percent) }
     }
 
     fun chooseScreensaverMinutes(minutes: Int) {

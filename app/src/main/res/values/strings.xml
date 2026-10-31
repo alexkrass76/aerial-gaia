@@ -453,4 +453,27 @@
     <string name="channels_remove_favorite">★ Remove from favorites</string>
     <string name="channels_play_error">Could not open the TV player.</string>
     <string name="channels_no_program">Program information unavailable</string>
+    <string name="gs_mtk_readonly">Read-only · MediaTek</string>
+    <string name="gs_mtk_unavailable">Reading unavailable. Check local ADB access and try again.</string>
+    <string name="gs_mtk_unverified">Support not confirmed</string>
+    <string name="gs_mtk_verified_write">Changes are verified by reading back. Undo restores the last value.</string>
+    <string name="gs_mtk_write_failed">Change or verification failed. Use Undo; if the input or profile changed, return to the original context first.</string>
+    <string name="gs_unknown">Unknown</string>
+    <string name="gs_cec_volume">CEC volume control</string>
+    <string name="gs_cec_system_audio">System audio active</string>
+    <string name="gs_cec_arc_established">ARC connection established</string>
+    <string name="gs_cec_arc_ports">ARC-capable ports</string>
+    <string name="gs_cec_snapshot_hint">Runtime snapshot · Refresh to update. ARC capability does not mean a connection is established.</string>
+    <string name="gs_cec_undo">Undo last CEC change</string>
+    <string name="gs_cec_write_failed">CEC change or verification failed. Use Undo. Active or unknown receiver audio blocks changes.</string>
+    <string name="gs_cec_write_hint">Changes require confirmation and runtime verification. CEC may rediscover HDMI devices. Receiver audio and ARC connection remain read-only.</string>
+    <string name="ss_night">Night mode</string>
+    <string name="ss_night_hint">Gradually warms the picture and lowers native backlight to 5%. Original backlight is saved and restored on exit. Requires supported firmware and access to its API.</string>
+    <string name="ss_night_off">Off</string>
+    <string name="ss_night_on">On</string>
+    <string name="ss_night_duration">Fade duration</string>
+    <string name="ss_night_dimming">Dimming</string>
+    <string name="ss_night_percent">%1$d%%</string>
+<string name="ss_night_failed">Night backlight needs attention. Return to the original input and picture mode, then retry restoration. Unsupported hardware or a manually changed value cannot be overwritten.</string>
+<string name="ss_night_restore">Restore backlight</string>
 </resources>

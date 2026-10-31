@@ -445,4 +445,27 @@
     <string name="channels_remove_favorite">★ Из избранного</string>
     <string name="channels_play_error">Не удалось открыть ТВ-плеер.</string>
     <string name="channels_no_program">Нет данных о текущей передаче</string>
+    <string name="gs_mtk_readonly">Только чтение · MediaTek</string>
+    <string name="gs_mtk_unavailable">Чтение недоступно. Проверьте локальный доступ ADB и повторите попытку.</string>
+    <string name="gs_mtk_unverified">Поддержка не подтверждена</string>
+    <string name="gs_mtk_verified_write">Изменения проверяются повторным чтением. Можно отменить последнее изменение.</string>
+    <string name="gs_mtk_write_failed">Изменение или проверка не удались. Используйте отмену; если сменился вход или профиль, сначала вернитесь к исходному.</string>
+    <string name="gs_unknown">Неизвестно</string>
+    <string name="gs_cec_volume">Громкость через CEC</string>
+    <string name="gs_cec_system_audio">Системная аудиосистема активна</string>
+    <string name="gs_cec_arc_established">Соединение ARC установлено</string>
+    <string name="gs_cec_arc_ports">Порты с поддержкой ARC</string>
+    <string name="gs_cec_snapshot_hint">Снимок текущего состояния · Для обновления нажмите «Обновить». Поддержка ARC не означает установленное соединение.</string>
+    <string name="gs_cec_undo">Отменить последнее изменение CEC</string>
+    <string name="gs_cec_write_failed">Изменение или проверка CEC не удались. Используйте отмену. При активном или неизвестном состоянии аудиосистемы изменения заблокированы.</string>
+    <string name="gs_cec_write_hint">Изменения требуют подтверждения и проверки состояния службы. CEC может заново обнаружить устройства HDMI. Аудиосистема и соединение ARC доступны только для чтения.</string>
+    <string name="ss_night">Ночной режим</string>
+    <string name="ss_night_hint">Плавно согревает изображение и снижает реальную подсветку до 5%. Исходная подсветка сохраняется и восстанавливается при выходе. Нужны поддерживаемая прошивка и доступ к её API.</string>
+    <string name="ss_night_off">Выкл.</string>
+    <string name="ss_night_on">Вкл.</string>
+    <string name="ss_night_duration">Время перехода</string>
+    <string name="ss_night_dimming">Затемнение</string>
+    <string name="ss_night_percent">%1$d%%</string>
+<string name="ss_night_failed">Не удалось завершить управление ночной подсветкой. Вернитесь к исходному входу и режиму изображения и повторите восстановление. Неподдерживаемый API или изменённое вручную значение не перезаписываются.</string>
+<string name="ss_night_restore">Восстановить подсветку</string>
 </resources>

@@ -55,6 +55,19 @@ internal object GaiaAvSettings {
     @Synchronized fun snapshot(context: Context): JSONObject = withSession(context) { it.snapshot() }
     fun hasUndo(context: Context): Boolean = context.getSharedPreferences("gaia_av", 0).contains(JOURNAL)
 
+    /** NightBacklight owns a separate persistent journal; manual AV Undo remains untouched. */
+    @Synchronized fun nightBacklight(context: Context, value: Int, expected: JSONObject): JSONObject = withSession(context) { session ->
+        val before = session.snapshot()
+        GaiaAvPolicy.validate(before, expected, "backlight", value.toString(), restoring = true)
+        check(session.write("backlight", value.toString()))
+        session.snapshot().also {
+            val wanted = JSONObject(before.toString())
+            wanted.getJSONObject("backlight").put("value", value)
+            GaiaAvPolicy.validate(it, wanted, "backlight", value.toString(), restoring = true)
+            check(GaiaAvPolicy.value(it, "backlight") == value.toString())
+        }
+    }
+
     @Synchronized fun change(context: Context, key: String, value: String, expected: JSONObject) {
         check(!app.orchard.tv.settings.AerialSettings.locked)
         withSession(context) { session ->

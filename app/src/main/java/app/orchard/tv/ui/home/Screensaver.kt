@@ -143,6 +143,7 @@ fun Screensaver(visible: Boolean, apps: List<AppEntry>, now: LocalDateTime, skip
     AnimatedVisibility(visible = visible && showInfo, enter = fadeIn(tween(180)), exit = fadeOut(tween(180))) {
         SaverInformationCard(now)
     }
+    NightModeVeil(visible)
     }
 }
 
