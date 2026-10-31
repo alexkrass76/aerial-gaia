@@ -420,6 +420,17 @@ fun HomeScreen(
         runCatching { requester(app.key).requestFocus() }
     }
 
+    // PR #821: state and deterministic focus for shell-authorized integration checks.
+    LaunchedEffect(focusedKey) { vm.reportedFocus = focusedKey }
+    LaunchedEffect(vm.focusRequest, vm.loaded, overlay) {
+        val wanted = vm.focusRequest ?: return@LaunchedEffect
+        if (!vm.loaded || overlay != Overlay.None) return@LaunchedEffect
+        withFrameNanos { }
+        val index = apps.indexOfFirst { it.key == wanted }
+        if (index >= 0) { focusedKey = wanted; pillFocused = false; focusApp(index) }
+        vm.focusRequest = null
+    }
+
     // First focus once the apps are in; afterwards, put focus back wherever it was when an overlay closes.
     LaunchedEffect(vm.loaded, overlay) {
         if (!vm.loaded || overlay != Overlay.None) return@LaunchedEffect

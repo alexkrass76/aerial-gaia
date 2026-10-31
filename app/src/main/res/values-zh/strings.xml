@@ -475,4 +475,9 @@
     <string name="ss_night_percent">%1$d%%</string>
 <string name="ss_night_failed">背光控制未完成。请返回原始输入源和图像模式后重试恢复。</string>
 <string name="ss_night_restore">恢复背光</string>
+    <string name="st_clock_weight">时间显示</string>
+    <string name="st_clock_weight_bold">粗体</string>
+    <string name="st_clock_weight_normal">正常</string>
+    <string name="st_clock_weight_light">细体</string>
+    <string name="st_clock_weight_hint">时钟数字的粗细。粗体保留原来的样式。</string>
 </resources>

@@ -468,4 +468,9 @@
     <string name="ss_night_percent">%1$d%%</string>
 <string name="ss_night_failed">Не удалось завершить управление ночной подсветкой. Вернитесь к исходному входу и режиму изображения и повторите восстановление. Неподдерживаемый API или изменённое вручную значение не перезаписываются.</string>
 <string name="ss_night_restore">Восстановить подсветку</string>
+    <string name="st_clock_weight">Толщина цифр</string>
+    <string name="st_clock_weight_bold">Жирные</string>
+    <string name="st_clock_weight_normal">Обычные</string>
+    <string name="st_clock_weight_light">Тонкие</string>
+    <string name="st_clock_weight_hint">Толщина цифр часов. Жирные сохраняют прежний вид.</string>
 </resources>

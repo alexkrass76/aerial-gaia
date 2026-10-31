@@ -468,4 +468,9 @@
     <string name="ss_night_percent">%1$d%%</string>
 <string name="ss_night_failed">Артқы жарықты басқару аяқталмады. Бастапқы кіріс пен кескін режиміне оралып, қалпына келтіруді қайталаңыз.</string>
 <string name="ss_night_restore">Артқы жарықты қалпына келтіру</string>
+    <string name="st_clock_weight">Цифр қалыңдығы</string>
+    <string name="st_clock_weight_bold">Жуан</string>
+    <string name="st_clock_weight_normal">Қалыпты</string>
+    <string name="st_clock_weight_light">Жіңішке</string>
+    <string name="st_clock_weight_hint">Сағат цифрларының қалыңдығы. Жуан бұрынғы көріністі сақтайды.</string>
 </resources>

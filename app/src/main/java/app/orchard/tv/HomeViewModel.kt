@@ -37,7 +37,7 @@ import app.orchard.tv.ui.home.ScreensaverSkips
 import app.orchard.tv.ui.home.TileFaces
 import app.orchard.tv.ui.theme.canvasDensity
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.drop
@@ -84,6 +84,8 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
     private val folderArt = HashMap<String, Pair<List<TileArt>, TileArt>>()
     var loaded by mutableStateOf(false); private set
 
+    var reportedFocus by mutableStateOf<String?>(null)
+    var focusRequest by mutableStateOf<String?>(null)
     var overlay by mutableStateOf<Overlay>(Overlay.None)
     var settingsShowSystemApps by mutableStateOf(false)
     var movingKey by mutableStateOf<String?>(null); private set
@@ -125,11 +127,19 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private var loadJob: Job? = null
+    private var sourceJob: Job? = null
 
     init {
         AppCatalog.renameFolder = ::renameFolder
         AppCatalog.pinSource = ::pinSourceById
         AppCatalog.layout = layoutOps
+        // PR #962: a recreated VM can show the process catalogue before the fresh query finishes.
+        if (AppCatalog.loaded.isNotEmpty()) {
+            all = AppCatalog.loaded
+            sources = AppCatalog.sources
+            arrange()
+            loaded = true
+        }
         reload()
         // A tile picture set or removed from the phone page.
         viewModelScope.launch { snapshotFlow { CustomIcons.version }.drop(1).collect { reload() } }
@@ -193,9 +203,9 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
                 if (Build.VERSION.SDK_INT >= 26) ctx.packageManager.getChangedPackages(0)?.sequenceNumber ?: packagesSeen else packagesSeen
             }
             val started = SystemClock.uptimeMillis()
-            // The inputs are probed while the apps load: one after the other, a cold start waited
-            // for both in turn (0.1-0.8 s more on the TVs in issues #452, #454, #537).
-            val probing = async(Dispatchers.Default) { SystemProbe.sources(ctx) }
+            // Source discovery is independent: a slow vendor Binder must not delay app tiles.
+            // CPU-heavy tile rendering remains on Default; only source queries use IO.
+            refreshSources()
             // A cold start reads only the first rows' tiles whole; the rest follow just after.
             val first: ((Set<String>) -> Set<String>)? = if (loaded) null else { installed -> store.leading(LEADING_TILES, installed) }
             all = AppCatalog.load(ctx, first)
@@ -205,7 +215,6 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
             val now = SystemClock.uptimeMillis()
             DiagLog.i("${all.size} apps in ${now - started} ms (wait ${from - started}, queries ${queried - from}, " +
                 "tiles ${done - queried}, main ${now - done})")
-            sources = probing.await()
             arrange()
             prepareFaces()
             val wasLoaded = loaded
@@ -435,10 +444,15 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
      * stays in front, so nothing re-probed it (PR #507, by Sakurasan, checked on that TV).
      */
     fun refreshSources() {
-        viewModelScope.launch {
-            val ctx = context
-            val s = withContext(Dispatchers.Default) { SystemProbe.sources(ctx) }
-            if (s.isNotEmpty() && sources.isEmpty()) { sources = s; arrange() }
+        if (sourceJob?.isActive == true) return
+        sourceJob = viewModelScope.launch {
+            val s = try { withContext(Dispatchers.IO) { SystemProbe.sources(context) } }
+                catch (cancelled: CancellationException) { throw cancelled }
+                catch (error: Exception) { DiagLog.i("source probe failed: ${error.javaClass.simpleName}"); return@launch }
+            if (s != sources) {
+                sources = s
+                if (loaded) { arrange(); prepareFaces() }
+            }
         }
     }
 

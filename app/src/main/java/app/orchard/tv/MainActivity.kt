@@ -204,6 +204,7 @@ class MainActivity : ComponentActivity() {
         Sounds.init(this)
         Shelf.init(this)
         ShelfImages.init(this)
+        app.orchard.tv.agent.AgentBridge.attach(vm)
         val reducedMotion = Settings.Global.getFloat(contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f
 
         // The home screen paints every pixel itself; a window background would be one more

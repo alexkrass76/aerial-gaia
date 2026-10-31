@@ -61,6 +61,11 @@ enum class UiSounds(val key: String) {
  * stays at 60 Hz: for TVs whose GPU cannot keep up (issues #232, #354). Auto is Lite on a low-end
  * TV (DeviceClass) and Full elsewhere.
  */
+enum class ClockWeight(val key: String) {
+    Bold("bold"), Regular("regular"), Light("light");
+    companion object { fun of(key: String?) = entries.firstOrNull { it.key == key } ?: Bold }
+}
+
 enum class Effects(val key: String) {
     Auto("auto"), Full("full"), Lite("lite");
 
@@ -133,6 +138,7 @@ object AerialSettings {
 
     /** The date and weather over a big clock above the top row, instead of one small line in the corner. */
     var largeClock by mutableStateOf(false); private set
+    var clockWeight by mutableStateOf(ClockWeight.Bold); private set
 
     /** Every app's name under its tile, or one big title above the grid (issue #28), the top row's on the glass plate too. */
     var nameMode by mutableStateOf(NameMode.Focused); private set
@@ -205,6 +211,7 @@ object AerialSettings {
         pinArrows = prefs.getBoolean("pin_arrows", false)
         oneRowHome = prefs.getBoolean("one_row_home", true)
         peekNextRow = prefs.getBoolean("peek_next_row", true)
+        clockWeight = ClockWeight.of(prefs.getString("clock_weight", null))
         clockRight = prefs.getBoolean("clock_right", false)
         largeClock = prefs.getBoolean("large_clock", false)
         homePlate = prefs.getBoolean("home_plate", true)
@@ -303,6 +310,11 @@ object AerialSettings {
     fun chooseClockRight(on: Boolean) {
         clockRight = on
         app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit { putBoolean("clock_right", on) }
+    }
+
+    fun chooseClockWeight(weight: ClockWeight) {
+        clockWeight = weight
+        app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit { putString("clock_weight", weight.key) }
     }
 
     fun chooseLargeClock(on: Boolean) {

@@ -100,6 +100,7 @@ import app.orchard.tv.ui.theme.Glyph
 import app.orchard.tv.ui.theme.GlyphIcon
 import app.orchard.tv.ui.theme.Motion
 import app.orchard.tv.ui.theme.Palette
+import app.orchard.tv.ui.theme.fontWeight
 import app.orchard.tv.ui.theme.Type
 import app.orchard.tv.update.Updates
 import app.orchard.tv.wallpaper.PhoneServer
@@ -210,7 +211,7 @@ private fun MainPage(vm: HomeViewModel, now: LocalDateTime, takeFocus: Boolean, 
     }
 
     Column(Modifier.heightIn(max = 448.dp).verticalScroll(rememberScrollState())) {
-        BasicText(timeText(now), style = Type.SmallClock.copy(fontSize = Type.LargeTitle.fontSize * 1.05f))
+        BasicText(timeText(now), style = Type.SmallClock.copy(fontWeight = AerialSettings.clockWeight.fontWeight, fontSize = Type.LargeTitle.fontSize * 1.05f))
         BasicText(dateText(now), style = Type.Callout)
         Spacer(Modifier.height(12.dp))
         NetworkSummary(vm.network)

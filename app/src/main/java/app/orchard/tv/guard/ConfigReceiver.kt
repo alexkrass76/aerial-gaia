@@ -32,6 +32,12 @@ import kotlinx.coroutines.launch
  */
 class ConfigReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
+        app.orchard.tv.agent.AgentApi.parse(listOf("agent", "key", "value", "target").associateWith { intent.getStringExtra(it) })?.let { command ->
+            val answer = runCatching { app.orchard.tv.agent.AgentBridge.run(context, command) }
+                .getOrElse { "error: ${it.javaClass.simpleName}" }
+            if (isOrderedBroadcast) resultData = answer
+            return
+        }
         if (intent.getBooleanExtra("yaos_cec_roundtrip_test", false)) {
             val pending=goAsync()
             val app=context.applicationContext

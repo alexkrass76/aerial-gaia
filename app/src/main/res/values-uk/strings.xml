@@ -468,4 +468,9 @@
     <string name="ss_night_percent">%1$d%%</string>
 <string name="ss_night_failed">Не вдалося завершити керування підсвічуванням. Поверніться до початкового входу та режиму зображення й повторіть відновлення.</string>
 <string name="ss_night_restore">Відновити підсвічування</string>
+    <string name="st_clock_weight">Товщина цифр</string>
+    <string name="st_clock_weight_bold">Жирні</string>
+    <string name="st_clock_weight_normal">Звичайні</string>
+    <string name="st_clock_weight_light">Тонкі</string>
+    <string name="st_clock_weight_hint">Товщина цифр годинника. Жирні зберігають попередній вигляд.</string>
 </resources>

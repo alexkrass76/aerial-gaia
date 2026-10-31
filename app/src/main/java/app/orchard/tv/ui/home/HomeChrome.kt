@@ -27,6 +27,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.produceState
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.layout.onSizeChanged
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -76,6 +81,7 @@ import app.orchard.tv.ui.theme.Glyph
 import app.orchard.tv.ui.theme.GlyphIcon
 import app.orchard.tv.ui.theme.Motion
 import app.orchard.tv.ui.theme.Palette
+import app.orchard.tv.ui.theme.fontWeight
 import app.orchard.tv.ui.theme.Type
 import app.orchard.tv.weather.Weather
 import app.orchard.tv.weather.WeatherKind
@@ -282,9 +288,18 @@ private fun Plate(glass: ImageBitmap?, plate: Rect?, scroll: () -> Float, collap
         swap.animateTo(1f, tween(450, easing = Motion.EaseOut))
         under = null
     }
-    val top = remember(shown) { shown?.let { PlateLayer(plateTinted(it)) } }
-    val bottom = remember(under) { under?.let { PlateLayer(plateTinted(it)) } }
-    Canvas(Modifier.fillMaxSize()) {
+    val density = LocalDensity.current
+    var screen by remember { mutableStateOf(Size.Zero) }
+    val radius = with(density) { PlateCorner.toPx() }
+    val rim = with(density) { 1.2.dp.toPx() }
+    suspend fun bake(glass: ImageBitmap?): ImageBitmap? {
+        if (glass == null || plate == null || screen == Size.Zero) return null
+        val size = screen
+        return withContext(Dispatchers.Default) { bakePlate(plateTinted(glass), size, plate, radius, rim) }
+    }
+    val top by produceState<ImageBitmap?>(null, shown, plate, screen, radius, rim) { value = bake(shown) }
+    val bottom by produceState<ImageBitmap?>(null, under, plate, screen, radius, rim) { value = bake(under) }
+    Canvas(Modifier.fillMaxSize().onSizeChanged { screen = Size(it.width.toFloat(), it.height.toFloat()) }) {
         if (plate == null) return@Canvas
         // The plate rides with its row and dissolves into the frosted background: it fades
         // over the first half of the scroll, swelling a little as if lifting off, and settles
@@ -297,32 +312,17 @@ private fun Plate(glass: ImageBitmap?, plate: Rect?, scroll: () -> Float, collap
         val grow = PlateSwell.toPx() * (1f - rest)
         val r = plate.translate(0f, -scroll()).inflate(grow)
         val t = swap.value
-        if (t < 1f) bottom?.draw(this, plate, r, alpha)
-        top?.draw(this, plate, r, if (bottom != null) alpha * t else alpha)
+        val below = bottom.takeIf { under != null }
+        if (t < 1f) below?.let { drawBakedPlate(it, r, alpha) }
+        top?.let { drawBakedPlate(it, r, if (below != null) alpha * t else alpha) }
     }
 }
 
-/**
- * Glass, continuous outline and lit edge baked into one picture at the plate's resting place and
- * size, stretched as it swells and riding up with its row as it fades. The GPU draws one image.
- * Composing them in shaders while drawing (1.27) came out solid white on older GPUs (Xiaomi
- * MiTV-ASTP0, Android 9, Mali-G31, issue #183; a HuiQu projector, #181) and drawn apart they cost
- * 3 ms more a frame than the plain rounded plate. Baked while drawing, for one screen and place.
- */
-private class PlateLayer(private val src: ImageBitmap) {
-    private var baked: Pair<Pair<Size, Rect>, ImageBitmap>? = null
-
-    fun draw(scope: androidx.compose.ui.graphics.drawscope.DrawScope, plate: Rect, at: Rect, alpha: Float) = with(scope) {
-        val image = baked?.takeIf { it.first == size to plate }?.second
-            ?: bakePlate(src, size, plate, PlateCorner.toPx(), 1.2.dp.toPx()).also { baked = (size to plate) to it }
-        drawImage(
-            image,
-            dstOffset = IntOffset(at.left.roundToInt(), at.top.roundToInt()),
-            dstSize = IntSize(at.width.roundToInt(), at.height.roundToInt()),
-            alpha = alpha,
-            filterQuality = FilterQuality.Low,
-        )
-    }
+/** Draw a prepared plate; no allocation, mask creation or tinting on the UI thread. */
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawBakedPlate(image: ImageBitmap, at: Rect, alpha: Float) {
+    drawImage(image, dstOffset = IntOffset(at.left.roundToInt(), at.top.roundToInt()),
+        dstSize = IntSize(at.width.roundToInt(), at.height.roundToInt()), alpha = alpha,
+        filterQuality = FilterQuality.Low)
 }
 
 private fun smooth(x: Float) = x * x * (3f - 2f * x)
@@ -419,7 +419,7 @@ fun ShelfClock(
         BasicText(dateText(now), style = Type.Title.copy(color = Color.White.copy(alpha = 0.9f), shadow = shadow), modifier = aside)
         BasicText(
             timeText(now),
-            style = Type.Clock.copy(shadow = shadow),
+            style = Type.Clock.copy(fontWeight = AerialSettings.clockWeight.fontWeight, shadow = shadow),
             // The digits' cap top, in the trimmed box: the 104sp line puts it 7.6dp down, less the trim.
             modifier = Modifier.toSaverClock(toSaver, Type.Clock.fontSize, 7.6.dp - ClockTrimTop)
                 .trimmed(top = ClockTrimTop, bottom = ClockTrimBottom),
@@ -500,7 +500,7 @@ fun CornerClock(now: LocalDateTime, modifier: Modifier = Modifier, toSaver: () -
     val shadow = Shadow(Color.Black.copy(alpha = 0.5f), blurRadius = 8f)
     Row(modifier.height(34.dp), verticalAlignment = Alignment.CenterVertically) {
         BasicText(
-            timeText(now), style = Type.SmallClock.copy(fontSize = Type.Title.fontSize, color = dim, shadow = shadow),
+            timeText(now), style = Type.SmallClock.copy(fontWeight = AerialSettings.clockWeight.fontWeight, fontSize = Type.Title.fontSize, color = dim, shadow = shadow),
             modifier = Modifier.toSaverClock(toSaver, Type.Title.fontSize, Type.Title.fontSize.value.dp * CAP_TOP),
         )
         Weather.now?.let { w ->

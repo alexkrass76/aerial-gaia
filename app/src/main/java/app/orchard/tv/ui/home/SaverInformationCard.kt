@@ -14,6 +14,7 @@ import androidx.compose.ui.unit.sp
 import app.orchard.tv.R
 import app.orchard.tv.settings.AerialSettings
 import app.orchard.tv.ui.theme.GlyphIcon
+import app.orchard.tv.ui.theme.fontWeight
 import app.orchard.tv.ui.theme.Type
 import app.orchard.tv.weather.Weather
 import java.time.LocalDateTime
@@ -30,7 +31,7 @@ internal fun SaverInformationCard(now: LocalDateTime) {
                 .padding(horizontal = 24.dp, vertical = 20.dp),
         ) {
             BasicText(dateText(now), style = Type.Headline.copy(color = Color.White.copy(alpha = 0.9f), shadow = textShadow))
-            BasicText(timeText(now), style = Type.Clock.copy(fontSize = 64.sp, color = Color.White, shadow = textShadow))
+            BasicText(timeText(now), style = Type.Clock.copy(fontWeight = AerialSettings.clockWeight.fontWeight, fontSize = 64.sp, color = Color.White, shadow = textShadow))
             Weather.now?.let { weather ->
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     GlyphIcon(glyphFor(weather), Color.White, 22.dp, Modifier.padding(end = 8.dp))

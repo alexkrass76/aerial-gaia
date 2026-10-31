@@ -115,3 +115,10 @@ object Type {
         fontSize = 11.sp, letterSpacing = 0.01.em, color = Palette.SecondaryLabel,
     )
 }
+
+/** PR #1015: use the existing Inter weights, without another font asset. */
+val app.orchard.tv.settings.ClockWeight.fontWeight: FontWeight get() = when (this) {
+    app.orchard.tv.settings.ClockWeight.Bold -> FontWeight.W700
+    app.orchard.tv.settings.ClockWeight.Regular -> FontWeight.W400
+    app.orchard.tv.settings.ClockWeight.Light -> FontWeight.W300
+}

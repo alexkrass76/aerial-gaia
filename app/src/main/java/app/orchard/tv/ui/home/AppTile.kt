@@ -217,12 +217,15 @@ fun AppTile(
     // tvOS "jiggle" while the app is being moved.
     val wobble = if (moving && !reduced) {
         rememberInfiniteTransition(label = "jiggle").animateFloat(
-            initialValue = -1.3f, targetValue = 1.3f,
+            initialValue = -1.6f, targetValue = 1.6f,
             // A sine, not a triangle: linear turned back hard at each end and read as a buzz.
-            animationSpec = infiniteRepeatable(tween(130, easing = SineEasing), RepeatMode.Reverse),
+            animationSpec = infiniteRepeatable(tween(450, easing = SineEasing), RepeatMode.Reverse),
             label = "jiggle-angle",
         )
     } else null
+
+    val wobbleIn by animateFloatAsState(if (moving && !reduced) 1f else 0f,
+        tween(if (moving) 320 else 0, easing = Motion.EaseOut), label = "jiggle-in")
 
     // First appearance: a short stagger, so the grid settles in rather than popping on.
     val appear = remember { Animatable(if (reduced || appearDelayMs == null) 1f else 0f) }
@@ -269,7 +272,7 @@ fun AppTile(
                         zoom(scale)
                         rotationY = leanY.value
                         rotationX = leanX.value
-                        rotationZ = wobble?.value ?: 0f
+                        rotationZ = (wobble?.value ?: 0f) * wobbleIn
                         translationX = push.value.x
                         translationY = push.value.y + ShadowDrop.toPx() * lift
                         cameraDistance = 14f * density
@@ -289,7 +292,7 @@ fun AppTile(
                     zoom(scale)
                     rotationY = leanY.value
                     rotationX = leanX.value
-                    rotationZ = wobble?.value ?: 0f
+                    rotationZ = (wobble?.value ?: 0f) * wobbleIn
                     translationX = push.value.x
                     translationY = push.value.y
                     cameraDistance = 14f * density
@@ -478,7 +481,7 @@ fun AppTile(
                         zoom(scale)
                         rotationY = leanY.value
                         rotationX = leanX.value
-                        rotationZ = wobble?.value ?: 0f
+                        rotationZ = (wobble?.value ?: 0f) * wobbleIn
                         translationX = push.value.x
                         translationY = push.value.y
                         cameraDistance = 14f * density

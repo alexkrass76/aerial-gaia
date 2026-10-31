@@ -219,6 +219,12 @@ fun WallpaperSheet(
                             listOf(false to R.string.st_clock_small, true to R.string.st_clock_large),
                             AerialSettings.largeClock, AerialSettings::chooseLargeClock,
                         )
+                        Choices(R.string.st_clock_weight, stringResource(R.string.st_clock_weight_hint), note,
+                            listOf(app.orchard.tv.settings.ClockWeight.Bold to R.string.st_clock_weight_bold,
+                                app.orchard.tv.settings.ClockWeight.Regular to R.string.st_clock_weight_normal,
+                                app.orchard.tv.settings.ClockWeight.Light to R.string.st_clock_weight_light),
+                            AerialSettings.clockWeight, AerialSettings::chooseClockWeight)
+
                     }
                     Spacer(Modifier.height(10.dp))
                     Group { note ->

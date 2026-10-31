@@ -476,4 +476,9 @@
     <string name="ss_night_percent">%1$d%%</string>
 <string name="ss_night_failed">Night backlight needs attention. Return to the original input and picture mode, then retry restoration. Unsupported hardware or a manually changed value cannot be overwritten.</string>
 <string name="ss_night_restore">Restore backlight</string>
+    <string name="st_clock_weight">Clock Weight</string>
+    <string name="st_clock_weight_bold">Bold</string>
+    <string name="st_clock_weight_normal">Regular</string>
+    <string name="st_clock_weight_light">Light</string>
+    <string name="st_clock_weight_hint">Weight of the clock digits. Bold preserves the previous appearance.</string>
 </resources>

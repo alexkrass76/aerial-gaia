@@ -66,7 +66,9 @@ private val OverAppGlass = Palette.Glass.copy(alpha = 0.86f)
  */
 fun Modifier.liquidGlass(corner: Dp, bottomCorners: Boolean = true): Modifier = composed {
     val overApp = LocalGlassOverApp.current
-    val frost = Wallpapers.frosted.takeIf { Wallpapers.backdrop != null && !overApp }
+    val latest = Wallpapers.frosted.takeIf { Wallpapers.backdrop != null && !overApp }
+    // PR #866: hold a panel's glass through video-frame updates, while respecting over-app glass.
+    val frost = remember(Wallpapers.selectedId, overApp, latest == null) { latest }
     var at by remember { mutableStateOf(Offset.Zero) }
     var root by remember { mutableStateOf(IntSize.Zero) }
     val shape = if (bottomCorners) RoundedCornerShape(corner) else RoundedCornerShape(topStart = corner, topEnd = corner)

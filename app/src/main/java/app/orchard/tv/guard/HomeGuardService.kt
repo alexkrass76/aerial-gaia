@@ -792,7 +792,7 @@ class HomeGuardService : AccessibilityService() {
         // listed so their filters can be read.
         val vendor = runCatching {
             packageManager.queryIntentActivities(Intent(Intent.ACTION_MAIN), PackageManager.GET_RESOLVED_FILTER)
-                .filter { ri -> ri.filter?.categoriesIterator()?.asSequence()?.any(::isVendorHomeCategory) == true }
+                .filter { ri -> ri.filter?.categoriesIterator()?.asSequence()?.any(Companion::isVendorHomeCategory) == true }
         }.getOrDefault(emptyList())
         // The TV player is where inputs play, even where it also declares a Home filter: TCL
         // 85G60E (Android 11) lists com.tcl.tv as a Home next to com.tcl.cyberui, and every input
@@ -824,10 +824,6 @@ class HomeGuardService : AccessibilityService() {
         }
     }
 
-    /** Android's own SECONDARY_HOME is for other displays, and comes with CATEGORY_HOME anyway. */
-    private fun isVendorHomeCategory(category: String): Boolean =
-        category.startsWith(VENDOR_HOME_PREFIX) ||
-            (category.endsWith(VENDOR_HOME_SUFFIX) && category != "android.intent.category.SECONDARY_HOME")
 
     /**
      * Brings Aerial's one task to the front. No CATEGORY_HOME: on firmwares where Aerial is not the
@@ -889,6 +885,11 @@ class HomeGuardService : AccessibilityService() {
         private val NOT_LAUNCHERS = setOf("com.stv.appdaemon", "com.letv.lekids")
         /** TV services whose input switch shows the stock launcher on the way (Skyworth, #155). */
         private val SOURCE_SWITCHERS = setOf("com.tianci.tv")
+        /** Exclude secondary displays and CVTE factory tests; neither is a stock launcher (#1028). */
+        internal fun isVendorHomeCategory(category: String): Boolean =
+            category.startsWith(VENDOR_HOME_PREFIX) ||
+                (category.endsWith(VENDOR_HOME_SUFFIX) && category != "android.intent.category.SECONDARY_HOME" && !category.endsWith("_AT_HOME"))
+
         private const val VENDOR_HOME_PREFIX = "android.intent.category.HOME."
         private const val VENDOR_HOME_SUFFIX = "_HOME"
 

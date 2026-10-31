@@ -17,13 +17,13 @@ android {
         applicationId = "app.orchard.tv"
         if (project.hasProperty("gaia")) {
             applicationIdSuffix = ".gaia"
-            versionNameSuffix = "-gaia.53"
+            versionNameSuffix = "-gaia.54"
         }
         resValue("string", "revival_account_type", if (project.hasProperty("gaia")) "app.orchard.tv.gaia" else "app.orchard.tv")
         // Android 5.0. Compose 1.10 and later need 6.0, so the Compose BOM below stays on 1.9.
         minSdk = 21
         targetSdk = 34
-        versionCode = if (project.hasProperty("gaia")) 103 else 56
+        versionCode = if (project.hasProperty("gaia")) 104 else 56
         versionName = "1.48"
         // `./gradlew -Pdiag ...`: a build for one reporter's TV whose logcat shows no app lines;
         // see system/DiagLog.kt.
