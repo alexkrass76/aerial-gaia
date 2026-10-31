@@ -8,6 +8,11 @@ import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -71,12 +76,18 @@ fun Pressable(
     focusRequester: FocusRequester? = null,
     focusedScale: Float = 1.06f,
     onKey: ((KeyEvent) -> Boolean)? = null,
+    onLongClick: (() -> Unit)? = null,
     content: @Composable BoxScope.(PressState) -> Unit,
 ) {
     val state = remember { PressState() }
     val ownRequester = remember { FocusRequester() }
     val requester = focusRequester ?: ownRequester
     val click by rememberUpdatedState(onClick)
+    val longClick by rememberUpdatedState(onLongClick)
+    val scope = rememberCoroutineScope()
+    var longJob by remember { mutableStateOf<Job?>(null) }
+    var longFired by remember { mutableStateOf(false) }
+    DisposableEffect(Unit) { onDispose { longJob?.cancel() } }
     val reduced = LocalReducedMotion.current
     val scale by animateFloatAsState(
         targetValue = when {
@@ -95,11 +106,12 @@ fun Pressable(
                 if (it.isFocused && !state.focused) Sounds.focusMoved()
                 state.focused = it.isFocused
                 if (!it.isFocused) {
+                    longJob?.cancel()
                     state.pressed = false
                     state.byKey = false
                 }
             }
-            .pointerInput(enabled) {
+            .pointerInput(enabled, onLongClick != null) {
                 if (!enabled) return@pointerInput
                 detectTapGestures(
                     onPress = {
@@ -107,6 +119,7 @@ fun Pressable(
                         tryAwaitRelease()
                         if (!state.byKey) state.pressed = false
                     },
+                    onLongPress = if (onLongClick != null) { { runCatching { requester.requestFocus() }; longClick?.invoke() } } else null,
                     onTap = {
                         runCatching { requester.requestFocus() }
                         Sounds.select()
@@ -119,14 +132,32 @@ fun Pressable(
                 if (!e.isSelect()) return@onKeyEvent false
                 when (e.type) {
                     KeyEventType.KeyDown -> {
-                        if (e.nativeKeyEvent.repeatCount == 0) {
+                        if (e.nativeKeyEvent.isLongPress && state.pressed && state.byKey && !longFired && longClick != null) {
+                            longJob?.cancel()
+                            longFired = true
+                            state.pressed = false
+                            state.byKey = false
+                            longClick?.invoke()
+                        } else if (e.nativeKeyEvent.repeatCount == 0) {
                             state.pressed = true
                             state.byKey = true
+                            longFired = false
+                            longJob?.cancel()
+                            if (longClick != null) longJob = scope.launch {
+                                delay(550)
+                                if (state.pressed && state.byKey) {
+                                    longFired = true
+                                    state.pressed = false
+                                    state.byKey = false
+                                    longClick?.invoke()
+                                }
+                            }
                         }
                         true
                     }
                     KeyEventType.KeyUp -> {
-                        val was = state.pressed && state.byKey
+                        longJob?.cancel()
+                        val was = state.pressed && state.byKey && !longFired
                         state.pressed = false
                         state.byKey = false
                         if (was) {

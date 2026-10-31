@@ -209,7 +209,7 @@ fun GaiaSettingsScreen(state: Overlay.GaiaSettings, vm: HomeViewModel, onOpen: (
                             else {
                                 InfoRow(stringResource(R.string.gs_model), info.model)
                                 InfoRow("Android", info.android)
-                                InfoRow("Aerial Gaia", info.version)
+                                InfoRow("Aerial UI", info.version)
                                 InfoRow(stringResource(R.string.gs_memory), stringResource(R.string.gs_free_total, Formatter.formatFileSize(context, info.memoryAvailable), Formatter.formatFileSize(context, info.memoryTotal)))
                                 InfoRow(stringResource(R.string.gs_storage), stringResource(R.string.gs_free_total, Formatter.formatFileSize(context, info.storageAvailable), Formatter.formatFileSize(context, info.storageTotal)))
                             }

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Aerial Gaia</string>
-    <string name="guard_name">Aerial Gaia Home Guard</string>
+    <string name="app_name">Aerial UI</string>
+    <string name="guard_name">Aerial UI Home Guard</string>
     <string name="guard_description">Keeps Aerial as your home screen on TVs that do not let you change it. Reads no screen content.</string>
 
     <string name="greeting_morning">Good morning</string>
@@ -293,7 +293,7 @@
     <string name="adb_enable">Turn On</string>
     <string name="adb_cancel">Cancel</string>
     <string name="info_adb_off">App management is off, PIN-locked, or this application is protected.</string>
-    <string name="gs_title">Aerial Gaia Settings</string>
+    <string name="gs_title">Aerial UI Settings</string>
     <string name="gs_back">Back</string>
     <string name="gs_apps">Apps</string>
     <string name="gs_system">About this TV</string>
@@ -441,4 +441,16 @@
     <string name="gs_mute_state">Mute</string>
     <string name="gs_custom_volume">Aerial volume indicator (experimental)</string>
     <string name="gs_replace_volume">Replace stock indicator (experimental)</string>
+    <string name="yaos_channels">Yandex TV channels</string>
+    <string name="channels_back">Back</string>
+    <string name="channels_refresh">Refresh</string>
+    <string name="channels_all">All channels</string>
+    <string name="channels_favorites">Favorites</string>
+    <string name="channels_loading">Loading channels…</string>
+    <string name="channels_error">Cannot read channel catalog. Try refreshing.</string>
+    <string name="channels_empty">No channels in this group.</string>
+    <string name="channels_add_favorite">☆ Add to favorites</string>
+    <string name="channels_remove_favorite">★ Remove from favorites</string>
+    <string name="channels_play_error">Could not open the TV player.</string>
+    <string name="channels_no_program">Program information unavailable</string>
 </resources>

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="guard_name">Aerial Gaia Home Guard</string>
+    <string name="guard_name">Aerial UI Home Guard</string>
     <string name="guard_description">Оставляет Aerial главным экраном на телевизорах, где его нельзя сменить. Не читает содержимое экрана.</string>
     <string name="greeting_morning">Доброе утро</string>
     <string name="greeting_afternoon">Добрый день</string>
@@ -285,7 +285,7 @@
     <string name="adb_enable">Включить</string>
     <string name="adb_cancel">Отмена</string>
     <string name="info_adb_off">Управление выключено, заблокировано PIN-кодом или приложение защищено.</string>
-    <string name="gs_title">Настройки Aerial Gaia</string>
+    <string name="gs_title">Настройки Aerial UI</string>
     <string name="gs_back">Назад</string>
     <string name="gs_apps">Приложения</string>
     <string name="gs_system">Об этом телевизоре</string>
@@ -433,4 +433,16 @@
     <string name="gs_mute_state">Без звука</string>
     <string name="gs_custom_volume">Индикатор громкости Aerial (пробный)</string>
     <string name="gs_replace_volume">Заменять штатный индикатор (пробный)</string>
+    <string name="yaos_channels">Телеканалы Яндекса</string>
+    <string name="channels_back">Назад</string>
+    <string name="channels_refresh">Обновить</string>
+    <string name="channels_all">Все каналы</string>
+    <string name="channels_favorites">Избранное</string>
+    <string name="channels_loading">Загрузка каналов…</string>
+    <string name="channels_error">Не удалось прочитать каталог. Попробуйте обновить.</string>
+    <string name="channels_empty">В этой группе пока нет каналов.</string>
+    <string name="channels_add_favorite">☆ В избранное</string>
+    <string name="channels_remove_favorite">★ Из избранного</string>
+    <string name="channels_play_error">Не удалось открыть ТВ-плеер.</string>
+    <string name="channels_no_program">Нет данных о текущей передаче</string>
 </resources>

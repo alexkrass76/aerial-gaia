@@ -703,8 +703,8 @@ class MainActivity : ComponentActivity() {
             IntentFilter(android.net.wifi.WifiManager.WIFI_STATE_CHANGED_ACTION),
             ContextCompat.RECEIVER_EXPORTED,
         )
-        // Apps can change while Aerial is in the background without it hearing about it.
-        vm.reload()
+        // reloadIfPackagesChanged above catches changes while stopped. An unconditional reload
+        // here cancelled the initial load and rebuilt the grid on every return from a channel.
         Wallpapers.refreshDailyIfStale()
         Wallpapers.rotateIfDue()
         Weather.refreshIfStale()

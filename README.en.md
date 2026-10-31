@@ -1,94 +1,94 @@
-# Aerial Gaia
+# Aerial UI
 
-GaiaOS / CVTE port of [Aerial by pengchujin](https://github.com/pengchujin/aerial-tv), based on v1.48. MIT license retained.
+**Your TV. Your home screen.**
 
-[Russian README](README.md) · [Installation and rollback (Russian)](docs/GAIAOS.md) · [Porting notes](docs/devices/gaiaos-t950s-be30ae.md)
+An open-source Android TV launcher bringing apps, HDMI inputs, channels and settings
+into one remote-friendly interface. Aerial UI grew from Aerial Gaia, a fork of
+[Aerial](https://github.com/pengchujin/aerial-tv) with GaiaOS/CVTE and
+YaOS/MediaTek/Cultraview integrations.
 
-Current build: **1.48-gaia.39**, versionCode 89, package `app.orchard.tv.gaia`.
+[Published APKs](https://github.com/alexkrass76/aerial-gaia/releases) ·
+[Installation and rollback](docs/GAIAOS.md) · [Changelog](CHANGELOG.md) · [Русский](README.md)
 
-The release adds native settings, a two-column settings layout, personalization inside
-settings, contextual volume help, speaker balance and an opt-in vertical volume meter.
-An independently opt-in experimental lease temporarily stops CVTE OptionService and
-restores it when the helper heartbeat expires. Version .39 removes phantom 0% flashes
-from heartbeat window checks. Both options default off; this is not full GlobalUI
-replacement. USB/ARC/warnings and boot/standby still need acceptance testing.
-See [implementation and recovery](docs/GLOBALUI-REPLACEMENT.md).
-Release build and 126 tests passed; the published APK is the installed test build.
-HDMI signal, AirPlay and reboot were not re-tested in this cycle. Settings coverage
-is incomplete; upstream update checks are disabled and Gaia updates remain manual.
+![Aerial UI home screen](docs/screenshots/home.png)
 
-- Styled, static Direct Boot card uses framework Canvas and APK resources only, waiting for unlock before opening the regular UI.
-- Upstream v1.47 updates phone settings, app/folder management, Home Guard, remote controls and screensavers.
-- VPN badge indicates an active Android VPN network, not verified tunnel connectivity.
-- HOME + CVTE COMMON_HOME categories support physical Home.
-- Native CVTE TIF routing for Droidlogic HDMI HW5–HW8.
-- Home Guard excludes the TV input screen (`com.cvte.tv.setting`).
-- Separate package and revival account identity from upstream Aerial.
+## Make the TV yours
 
-Verified on one LVG 32LM57 / TP.T950ST.PB752 / t950s_be30ae, Android 14, firmware 20250715_151455. On 1.41-gaia.3, on 2026-10-24 a reboot completed with Mars hidden and disabled, no Mars process. The owner confirmed HDMI1 picture/audio, physical Home and navigation buttons, and AirPlay after reboot. Other models, HDMI2–4, CEC and long-term operation without Mars are untested.
+- Arrange apps, folders and custom icons; choose wallpapers and personalize from your phone.
+- Keep apps and pinned HDMI inputs together, with native vendor playback and Home return.
+- Enable the optional content shelf only if you want it.
+- Enjoy a consistent dock, focus treatment, animations and settings interface.
 
-For 1.47-gaia.8, weather city names follow the TV language and phone settings URLs use physical Wi-Fi/Ethernet rather than VPN addresses. Release build and 33 tests passed. Russian city display and the exact QR URL returning HTTP 200 over LAN with WireGuard active were verified on the TV. Installed in place without data clearing or a reboot. Old unresolvable translated city names need to be selected again once.
+## Browse channels in Aerial UI
 
-Previously, for 1.47-gaia.6, the release build and 27 tests passed. Cold boot showed the styled card and opened Aerial automatically with Mars disabled. Wi-Fi connected about a minute later. Physical Home was confirmed on 1.47-gaia.5; HDMI picture/audio on 1.47 remains untested because no source device was connected.
+On compatible YaOS devices, browse a three-column grid with logos, categories,
+current program information and local favorites. Press OK to watch; hold OK for
+the favorite action. Playback, subscriptions and DRM stay with the stock Yandex
+player. Available channels and EPG depend on its provider.
 
-This is an application, not firmware. It never automatically disables system packages. AirPlay runs in a separate receiver app and is not bundled with this launcher. The tested setup now uses io.github.jqssun.airplay with MAXHUB hidden/disabled; com.screenshare.platform remains enabled. Do not disable Mars before testing Direct Boot and establishing Ethernet ADB recovery: an earlier build stalled at Wisdom Share and Wi-Fi did not recover.
+![Channel groups and current programs](docs/screenshots/channels.png)
 
-Build with JDK 17 and Android SDK 36:
+<details>
+<summary>Channel context menu</summary>
+
+![Channel favorite action](docs/screenshots/channel-menu.png)
+
+</details>
+
+## Features
+
+| Feature | What it does |
+|---|---|
+| Task switcher | Double Home, app tiles, task switching and task dismissal on supported firmware with the optional ADB helper. |
+| Video screensavers | Uncluttered video; a direction key reveals time, date, weather and localized captions for 10 seconds. Back exits. |
+| Integrated settings | Apps, network, Bluetooth, Android preferences and personalization; additional picture/audio controls on compatible CVTE devices. |
+| Direct Boot | A minimal home screen before user storage unlocks, followed by the regular launcher. |
+| Phone customization | Local-network settings page, with VPN-aware LAN address selection. |
+| Volume overlay | Aerial's vertical indicator and an experimental stock-overlay replacement for the tested CVTE platform. |
+| Languages | English, Russian, Ukrainian, Kazakh and Chinese UI. |
+
+AirPlay uses a separate receiver in the tested GaiaOS setup; the launcher APK does
+not implement or bundle AirPlay itself.
+
+## Device support
+
+| Tested device | Integration |
+|---|---|
+| LVG 32LM57, GaiaOS, Android 14 | CVTE/Droidlogic, Direct Boot, Home, native HDMI, additional settings and volume integration. |
+| HI VHIX-65U169MSY, YaOS, Android 11 | MediaTek/Cultraview, Home, MediaTek HDMI routing and the Yandex channel catalog. |
+
+Support depends on firmware APIs, not just a brand or chipset. Integrated settings
+do not yet replace every stock setting. CVTE controls are not automatically
+available on MediaTek. See [architecture and limitations](docs/MULTIVENDOR.md),
+[GaiaOS notes](docs/devices/gaiaos-t950s-be30ae.md) and [YaOS notes](docs/devices/yaos-mediatek.md).
+
+## Install and update
+
+Use [published releases](https://github.com/alexkrass76/aerial-gaia/releases) and
+the [installation guide](docs/GAIAOS.md), together with the notes for your platform.
+Update in place with the same signing key. **Existing Aerial Gaia settings stay:**
+the application ID remains `app.orchard.tv.gaia`. Do not uninstall it to rename it.
+Updates are manual; upstream installation scripts are not installers for this fork.
+
+This is an app, not firmware. It does not automatically remove system packages.
+Disabling the stock launcher is a separate operation requiring boot verification
+and a recovery plan.
+
+## Development
+
+Based on upstream Aerial v1.48. Local development history and verification status
+live in [CHANGELOG.md](CHANGELOG.md); Releases lists published APKs.
 
 ```sh
 ./gradlew -Pgaia assembleStandardRelease
 ```
 
-The `-Pgaia` flag and standard variant are required. Output: `app/build/outputs/apk/standard/release/app-standard-release.apk`.
+[Build and signing](docs/BUILD.md) · [Platform adapters](docs/MULTIVENDOR.md) ·
+[Task bridge](tools/task-bridge/README.md) · [CVTE volume integration](docs/GLOBALUI-REPLACEMENT.md)
 
-Signing uses private `local/signing.properties` and a keystore in `local/`; without these upstream falls back to a machine-local debug key. Updates require the same signing key as the installed copy. Never uninstall to work around a signature mismatch if you need to preserve data.
+## Credits and license
 
-Upstream install/restore scripts, website and update notifications are **not Gaia deployment tools**. No Gaia automatic update channel is implemented. Preserve all Gaia patches and re-test boot, HOME and HDMI before adopting newer upstream code. No signing keys, household configuration, proprietary Mars APKs or raw device logs are included.
-
-## 1.47-gaia.10: experimental task switching
-
-Double Home opens dock-style task tiles over the launcher wallpaper. OK resumes,
-Up removes the selected task, and Down focuses the circular info button. The
-title and help remain hidden until info is activated. Back hides help first.
-Known core components, WireGuard and Gaia AirPlay are protected from task removal.
-This is not a force-stop of all application services.
-
-The bundled shell-UID helper supports opt-in local ADB startup after unlock,
-without root or system boot-script edits. It defaults off: see
-[setup and rollback](tools/task-bridge/README.md). Tested on the Gaia Android 14
-device above; availability followed Wi-Fi connection after reboot. Helper memory
-was approximately 44 MiB PSS. Other devices and offline startup are unverified.
-HDMI and AirPlay were not retested in this release cycle.
-
-
-## Update 1.48-gaia.12
-
-Selected upstream PRs add independent Wi-Fi/Ethernet/VPN status, a Bluetooth shortcut,
-app details and opt-in permission management, an optional content shelf, and no generic
-caption on personal photos. Gaia keeps Direct Boot, CVTE HDMI, task switching and its
-on-demand screensaver. Shelf image caches are reduced for the 1 GB TV; app management
-protects system components, VPN and AirPlay. See [porting and validation notes](docs/GAIAOS.md#selected-community-features-148-gaia12).
-Included in release 1.48-gaia.14.
-
-
-## Update 1.48-gaia.13
-
-The Control Center gear now opens Gaia settings: network status, Bluetooth,
-installed apps and TV information. Wi-Fi connection, Bluetooth pairing and unported
-picture/sound options still use the firmware pages. The existing permission and
-protected-package controls are reused. CVTE services, Direct Boot and HDMI remain
-unchanged. See [scope and validation](docs/GAIAOS.md#unified-settings-first-stage-148-gaia13).
-
-
-## Local candidate: 1.48-gaia.15
-
-Settings adds Sound using the existing Control Center volume/mute controls.
-System apps are initially filtered from the app list and can be shown with a toggle;
-no packages are disabled or removed. The public release remains 1.48-gaia.14.
-
-
-## Local candidate: 1.48-gaia.16
-
-App icons appear in settings rows and App Info. Protected Stop/Uninstall actions
-are visible but inactive with an explanation. Management still requires explicit
-opt-in, which does not execute the original action. Uninstall uses Android confirmation.
+Based on [Aerial](https://github.com/pengchujin/aerial-tv) by **pengchujin**.
+The original [MIT license](LICENSE) is retained. Screenshots show actual Aerial UI /
+Aerial Gaia development builds on the test YaOS TV. Third-party app and channel
+logos belong to their owners; the pictured apps are not bundled with the launcher.

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="guard_name">Aerial Gaia Home Guard</string>
+    <string name="guard_name">Aerial UI Home Guard</string>
     <string name="guard_description">Басты экранды өзгертуге болмайтын теледидарларда Aerial-ді басты экран ретінде сақтайды. Экран мазмұнын оқымайды.</string>
     <string name="greeting_morning">Қайырлы таң</string>
     <string name="greeting_afternoon">Қайырлы күн</string>
@@ -285,7 +285,7 @@
     <string name="adb_enable">Қосу</string>
     <string name="adb_cancel">Бас тарту</string>
     <string name="info_adb_off">Басқару өшірулі, PIN арқылы құлыпталған немесе қолданба қорғалған.</string>
-    <string name="gs_title">Aerial Gaia баптаулары</string>
+    <string name="gs_title">Aerial UI баптаулары</string>
     <string name="gs_back">Артқа</string>
     <string name="gs_apps">Қолданбалар</string>
     <string name="gs_system">Теледидар туралы</string>
@@ -433,4 +433,16 @@
     <string name="gs_mute_state">Дыбыссыз</string>
     <string name="gs_custom_volume">Aerial дыбыс индикаторы (сынақ)</string>
     <string name="gs_replace_volume">Жүйелік индикаторды ауыстыру (сынақ)</string>
+    <string name="yaos_channels">Яндекс телеарналары</string>
+    <string name="channels_back">Артқа</string>
+    <string name="channels_refresh">Жаңарту</string>
+    <string name="channels_all">Барлық арналар</string>
+    <string name="channels_favorites">Таңдаулылар</string>
+    <string name="channels_loading">Арналар жүктелуде…</string>
+    <string name="channels_error">Каталогты оқу мүмкін болмады. Жаңартып көріңіз.</string>
+    <string name="channels_empty">Бұл топта арналар жоқ.</string>
+    <string name="channels_add_favorite">☆ Таңдаулыға қосу</string>
+    <string name="channels_remove_favorite">★ Таңдаулыдан алып тастау</string>
+    <string name="channels_play_error">ТВ ойнатқышын ашу мүмкін болмады.</string>
+    <string name="channels_no_program">Ағымдағы бағдарлама туралы мәлімет жоқ</string>
 </resources>

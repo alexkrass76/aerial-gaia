@@ -366,7 +366,7 @@ object SystemProbe {
         .ifEmpty { KonkaSources.load(context) }
         .ifEmpty { tclSources(context) }
         .ifEmpty { whaleySources(context) }
-        .ifEmpty { skyworthSources(context) } + listOfNotNull(usbSource(context))
+        .ifEmpty { skyworthSources(context) } + listOfNotNull(usbSource(context), app.orchard.tv.platform.YaosContent.source(context))
 
     /**
      * The TV's own player for USB drives, offered as one more input: owners switch the TV on to
@@ -421,7 +421,7 @@ object SystemProbe {
                 // only switches the picture (Sony BRAVIA XR90 with an Apple TV and a PS5, issue #259).
                 val cec = infos.firstOrNull { it.parentId == info.id }
                 val generic = genericRoute(cec ?: info, kind)
-                val intent = CvteSources.route(context, info)
+                val intent = app.orchard.tv.platform.TvPlatforms.route(context, info)
                     ?: (if (xiaomi) xiaomiRoute(info, kind, label, profile) else null)
                     ?: generic.takeIf { resolves(context, it) }
                     ?: droidLogicRoute(context, info)

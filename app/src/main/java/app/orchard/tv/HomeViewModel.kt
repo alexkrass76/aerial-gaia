@@ -161,25 +161,37 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
 
     /** PackageManager's change counter when the list was last loaded (Android 8+). */
     private var packagesSeen = 0
+    private var catalogConfiguration: android.content.res.Configuration? = null
 
     /**
      * Apps installed or removed while Aerial was in the background (from an app store in front)
      * send no broadcast Aerial hears: it listens only while started. Catch up when Home comes back
      * (issue #55). Before Android 8 there is no change counter; the reload is cheap, tiles are cached.
      */
+    private var packageCheckJob: Job? = null
+
     fun reloadIfPackagesChanged() {
-        if (!loaded) return
-        if (Build.VERSION.SDK_INT >= 26 && context.packageManager.getChangedPackages(packagesSeen) == null) return
-        reload()
+        if (loadJob?.isActive == true || packageCheckJob?.isActive == true) return
+        if (!loaded || catalogConfiguration != context.resources.configuration) { reload(); return }
+        packageCheckJob = viewModelScope.launch {
+            val changed = withContext(Dispatchers.IO) {
+                Build.VERSION.SDK_INT < 26 || context.packageManager.getChangedPackages(packagesSeen) != null
+            }
+            if (changed && loadJob?.isActive != true) reload()
+            else DiagLog.i("Home catalog unchanged; retained tiles")
+        }
     }
 
     fun reload() {
-        if (Build.VERSION.SDK_INT >= 26) {
-            packagesSeen = context.packageManager.getChangedPackages(0)?.sequenceNumber ?: packagesSeen
-        }
         loadJob?.cancel()
         loadJob = viewModelScope.launch {
             val ctx = context
+            val configuration = android.content.res.Configuration(ctx.resources.configuration)
+            // Capture before enumeration, publish only after it succeeds. A cancelled load must
+            // not acknowledge package changes that never reached the visible catalog.
+            val seen = withContext(Dispatchers.IO) {
+                if (Build.VERSION.SDK_INT >= 26) ctx.packageManager.getChangedPackages(0)?.sequenceNumber ?: packagesSeen else packagesSeen
+            }
             val started = SystemClock.uptimeMillis()
             // The inputs are probed while the apps load: one after the other, a cold start waited
             // for both in turn (0.1-0.8 s more on the TVs in issues #452, #454, #537).
@@ -202,6 +214,8 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
                 catchUpAfterBoot()
             }
             loaded = true
+            packagesSeen = seen
+            catalogConfiguration = configuration
             // Counted from this load's own list: a second Home (the guard starting MainActivity
             // again just after a cold start, Xiaomi MiTV-MFTR0) loads at the same time, and a count
             // kept in AppCatalog was cleared by the other one's second pass, leaving this Home's
@@ -388,8 +402,10 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    private var systemRefreshJob: Job? = null
     fun refreshSystem() {
-        viewModelScope.launch {
+        systemRefreshJob?.cancel()
+        systemRefreshJob = viewModelScope.launch {
             val ctx = context
             // Brightness off the main thread too: on MiTV without picture_backlight its first read
             // probes the panel over binder (MitvPanel.usable).
@@ -401,7 +417,7 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
             // TvSource holds an Intent, which has no value equality; compare what a tile shows.
             fun shown(list: List<TvSource>) = list.map { Triple(it.id, it.label, it.deviceName) }
             if (shown(s) != shown(sources)) { sources = s; arrange() } else sources = s
-            homeStatus = SystemProbe.homeStatus(ctx)
+            homeStatus = withContext(Dispatchers.IO) { SystemProbe.homeStatus(ctx) }
             brightness = level
         }
     }
@@ -435,7 +451,16 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun refreshNetwork() { network = SystemProbe.network(context) }
+    private var networkRefreshJob: Job? = null
+    fun refreshNetwork() {
+        networkRefreshJob?.cancel()
+        networkRefreshJob = viewModelScope.launch {
+            // Registering callbacks emits a burst (Wi-Fi, default network, VPN). Read the final
+            // state once, without binder/interface enumeration on the UI thread.
+            delay(100)
+            network = withContext(Dispatchers.IO) { SystemProbe.network(context) }
+        }
+    }
 
     /**
      * For the volume broadcast, one per step. It used to run refreshSystem, which read the level,

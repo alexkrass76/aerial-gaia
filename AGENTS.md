@@ -1,6 +1,6 @@
-# Aerial Gaia fork
+# Aerial UI fork
 
-Read README.md and docs/GAIAOS.md first. Build this port with `./gradlew -Pgaia assembleStandardRelease`. Upstream deployment scripts are not Gaia deployment tools. Preserve Direct Boot HOME, COMMON_HOME, native CVTE HDMI, the TV-player exclusion and separate package/account identity. Never publish local keys, TV addresses, raw device logs or proprietary APKs. No system-package changes without explicit user authorization and a working recovery path. The instructions below are inherited upstream context.
+Read README.md, docs/MULTIVENDOR.md and docs/GAIAOS.md first. Build this port with `./gradlew -Pgaia assembleStandardRelease`. Upstream deployment scripts are not Gaia deployment tools. Preserve Direct Boot HOME, COMMON_HOME, native CVTE HDMI, the TV-player exclusion and separate package/account identity. Never publish local keys, TV addresses, raw device logs or proprietary APKs. No system-package changes without explicit user authorization and a working recovery path. The instructions below are inherited upstream context.
 
 # Aerial：给 AI 代理的说明
 

@@ -49,12 +49,12 @@ object ShelfImages {
     }
 
     /** The picture at [uri], decoded to cover [w]×[h] px. */
-    suspend fun card(uri: String, w: Int, h: Int): Bitmap? {
-        val key = "$uri@${w}x$h"
+    suspend fun card(uri: String, w: Int, h: Int, fit: Boolean = false): Bitmap? {
+        val key = "$uri@${w}x$h:fit=$fit"
         cards.get(key)?.let { return it }
         return withContext(Dispatchers.IO) {
             val bytes = fetch(uri) ?: return@withContext null
-            decode(bytes, w, h)?.also { cards.put(key, it) }
+            decode(bytes, w, h, fit)?.also { cards.put(key, it) }
         }
     }
 
@@ -134,13 +134,18 @@ object ShelfImages {
         }
     }
 
-    private fun decode(bytes: ByteArray, w: Int, h: Int): Bitmap? {
+    private fun decode(bytes: ByteArray, w: Int, h: Int, fit: Boolean = false): Bitmap? {
         val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
         BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
         if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
         var sample = 1
         while (bounds.outWidth / (sample * 2) >= w && bounds.outHeight / (sample * 2) >= h) sample *= 2
         val src = BitmapFactory.decodeByteArray(bytes, 0, bytes.size, BitmapFactory.Options().apply { inSampleSize = sample }) ?: return null
+        if (fit) {
+            val scale = minOf(w.toFloat() / src.width, h.toFloat() / src.height, 1f)
+            return Bitmap.createScaledBitmap(src, (src.width * scale).toInt().coerceAtLeast(1),
+                (src.height * scale).toInt().coerceAtLeast(1), true).also { if (it !== src) src.recycle() }
+        }
         return Images.cover(src, w, h).also { if (it !== src) src.recycle() }
     }
 }

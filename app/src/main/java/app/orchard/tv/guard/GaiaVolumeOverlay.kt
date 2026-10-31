@@ -76,7 +76,7 @@ internal class GaiaVolumeOverlay(private val service: AccessibilityService, priv
             val params = WindowManager.LayoutParams((64*d).toInt(), (224*d).toInt(),
                 WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
-                PixelFormat.TRANSLUCENT).apply { gravity = Gravity.START or Gravity.CENTER_VERTICAL; x = (28*d).toInt(); title = "Aerial Gaia Volume" }
+                PixelFormat.TRANSLUCENT).apply { gravity = Gravity.START or Gravity.CENTER_VERTICAL; x = (28*d).toInt(); title = "Aerial UI Volume" }
             windows.addView(meter, params)
             view = meter
             windowVerified = true

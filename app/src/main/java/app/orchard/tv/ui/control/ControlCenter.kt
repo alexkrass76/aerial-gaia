@@ -293,7 +293,7 @@ private fun MainPage(vm: HomeViewModel, now: LocalDateTime, takeFocus: Boolean, 
             Box(Modifier.size(7.dp).clip(CircleShape).background(dot))
             Spacer(Modifier.width(8.dp))
             BasicText(text, style = Type.Caption, modifier = Modifier.weight(1f))
-            BasicText("${if (Updates.isGaia) "Aerial Gaia" else "Aerial"} ${Updates.current}", style = Type.Caption.copy(color = Palette.TertiaryLabel), modifier = Modifier.padding(end = 14.dp))
+            BasicText("${if (Updates.isGaia) "Aerial UI" else "Aerial"} ${Updates.current}", style = Type.Caption.copy(color = Palette.TertiaryLabel), modifier = Modifier.padding(end = 14.dp))
         }
     }
 }
